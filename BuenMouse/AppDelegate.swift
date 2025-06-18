@@ -1,5 +1,5 @@
 // Archivo: AppDelegate.swift
-// VERSIÓN COMPLETA, ESTABLE Y FIABLE (SIN OPTIMIZACIÓN DE VELOCIDAD)
+// VERSIÓN COMPLETA Y FINAL CON SENSIBILIDAD CONFIGURABLE
 
 import Cocoa
 import ApplicationServices
@@ -15,21 +15,56 @@ private func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: 
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     // MARK: - Variables de Estado (Publicadas para la UI)
-    @Published var isMonitoringActive = false { didSet { if isMonitoringActive { startMonitoring() } else { stopMonitoring() } } }
-    @Published var launchAtLogin = (SMAppService.mainApp.status == .enabled) { didSet { if launchAtLogin { ServiceManager.register() } else { ServiceManager.unregister() } } }
-    @Published var invertDragDirection = false
+    
+    @Published var isMonitoringActive = false {
+        didSet {
+            if isMonitoringActive {
+                startMonitoring()
+            } else {
+                stopMonitoring()
+            }
+        }
+    }
+    
+    @Published var launchAtLogin = (SMAppService.mainApp.status == .enabled) {
+        didSet {
+            if launchAtLogin {
+                ServiceManager.register()
+            } else {
+                ServiceManager.unregister()
+            }
+        }
+    }
+    
+    @Published var invertDragDirection: Bool = UserDefaults.standard.bool(forKey: "invertDragDirection") {
+        didSet {
+            UserDefaults.standard.set(invertDragDirection, forKey: "invertDragDirection")
+        }
+    }
+
+    // ¡NUEVA VARIABLE! La sensibilidad del arrastre, ahora configurable.
+    // La cargamos desde UserDefaults al iniciar, con un valor por defecto de 40.0.
+    @Published var dragThreshold: Double = UserDefaults.standard.double(forKey: "dragThreshold") == 0 ? 40.0 : UserDefaults.standard.double(forKey: "dragThreshold") {
+        didSet {
+            // Cada vez que el slider cambia, guardamos el nuevo valor.
+            UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold")
+        }
+    }
 
     // MARK: - Variables Internas
+    
     private var eventTap: CFMachPort?
     private var isMiddleMouseDown = false
     private var initialMouseLocation: CGPoint?
-    private var isWaitingForMissionControlExit = false // Para la "cárcel" de Mission Control
+    private var isWaitingForMissionControlExit = false
 
     // MARK: - Referencias a la UI
+    
     var window: NSWindow?
     var statusItem: NSStatusItem?
     
     // MARK: - Ciclo de Vida de la App
+    
     func applicationDidFinishLaunching(_ note: Notification) {
         requestPermissions()
         isMonitoringActive = true
@@ -39,28 +74,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         return false
     }
 
-    // MARK: - Lógica Principal del Event Tap (LÓGICA ESTABLE)
+    // MARK: - Lógica Principal del Event Tap
+    
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         
-        // --- Lógica para cuando ESTAMOS DENTRO de Mission Control ---
         if isWaitingForMissionControlExit {
             if type == .otherMouseDown {
-                SystemActionRunner.activateMissionControl() // Llama de nuevo para salir
+                SystemActionRunner.activateMissionControl()
                 isWaitingForMissionControlExit = false
-                return nil // Consume el evento
+                return nil
             }
-            return Unmanaged.passUnretained(event) // Ignora otros eventos
+            return Unmanaged.passUnretained(event)
         }
 
-        // --- Lógica para cuando NO ESTAMOS en Mission Control ---
         switch type {
         case .otherMouseDown:
-            // Al presionar, solo guardamos el estado inicial. No hacemos ninguna acción.
             isMiddleMouseDown = true
             initialMouseLocation = event.location
             
         case .otherMouseUp:
-            // Toda la lógica ocurre al soltar el botón.
             guard isMiddleMouseDown, let startLocation = initialMouseLocation else {
                 isMiddleMouseDown = false
                 return Unmanaged.passUnretained(event)
@@ -71,27 +103,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             let deltaX = endLocation.x - startLocation.x
             let distance = hypot(deltaX, endLocation.y - startLocation.y)
             
-            let dragThreshold: CGFloat = 40.0 // Umbral para considerar un arrastre
-            let clickThreshold: CGFloat = 10.0 // Umbral para considerar un clic
+            let clickThreshold: CGFloat = 10.0
             
-            if abs(deltaX) > dragThreshold {
-                // Es un arrastre claro para cambiar de espacio.
-                if deltaX > 0 { // Movimiento a la derecha
+            // Usamos la variable de la clase, que es configurable.
+            if abs(deltaX) > CGFloat(dragThreshold) {
+                if deltaX > 0 {
                     if invertDragDirection { SystemActionRunner.moveToPreviousSpace() } else { SystemActionRunner.moveToNextSpace() }
-                } else { // Movimiento a la izquierda
+                } else {
                     if invertDragDirection { SystemActionRunner.moveToNextSpace() } else { SystemActionRunner.moveToPreviousSpace() }
                 }
             } else if distance < clickThreshold {
-                // Es un clic claro, el ratón apenas se movió.
                 triggerMissionControlAction()
             }
             
-            // Si el movimiento fue intermedio (ni un clic claro ni un arrastre claro), no hacemos nada.
-            // Consumimos el evento para evitar efectos secundarios.
             return nil
 
         default:
-            // Ignoramos otros eventos como .mouseMoved
             break
         }
         
@@ -99,16 +126,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     // MARK: - Funciones de Ayuda
+    
     private func triggerMissionControlAction() {
-        print("Acción de Mission Control disparada.")
         SystemActionRunner.activateMissionControl()
         isWaitingForMissionControlExit = true
     }
 
     // MARK: - Funciones de Monitoreo
+    
     private func startMonitoring() {
         guard eventTap == nil else { return }
-        // Solo escuchamos los eventos de presionar y soltar.
         let eventsToMonitor: CGEventMask =
             (1 << CGEventType.otherMouseDown.rawValue) |
             (1 << CGEventType.otherMouseUp.rawValue)
@@ -132,6 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
     
     // MARK: - Gestión de UI
+    
     func moveToMenuBar() {
         self.window = NSApplication.shared.windows.first
         self.window?.close()
@@ -150,6 +178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     // MARK: - Permisos
+    
     private func requestPermissions() {
         let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as NSString: true]
         if !AXIsProcessTrustedWithOptions(opts) { print("Permisos de accesibilidad no concedidos.") }
