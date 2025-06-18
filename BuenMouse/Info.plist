@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>BuenMouse necesita permiso para escuchar los clics del ratón y poder activar funciones del sistema.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>BuenMouse necesita permiso para controlar otras aplicaciones del sistema, como System Events y Mission Control.</string>
+</dict>
+</plist>
