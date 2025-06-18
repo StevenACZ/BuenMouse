@@ -1,62 +1,37 @@
 // Archivo: AppDelegate.swift
-// VERSIÓN FINAL CON LÓGICA DE TEMPORIZADOR INTELIGENTE
+// VERSIÓN COMPLETA, ESTABLE Y FIABLE (SIN OPTIMIZACIÓN DE VELOCIDAD)
 
 import Cocoa
 import ApplicationServices
 import ServiceManagement
 
-// --- Función C Global Segura ---
+// --- Función C Global Segura (sin cambios) ---
 private func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
-    guard let refcon = refcon else {
-        return Unmanaged.passUnretained(event)
-    }
+    guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
     let myself = Unmanaged<AppDelegate>.fromOpaque(refcon).takeUnretainedValue()
-    
-    // Pasamos el evento a nuestra clase para que decida qué hacer.
     return myself.handleEvent(proxy: proxy, type: type, event: event)
 }
 
-
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
-    // --- Variables de Estado ---
-    @Published var isMonitoringActive = false {
-        didSet {
-            // Cada vez que este valor cambia, iniciamos o detenemos el monitoreo.
-            if isMonitoringActive {
-                startMonitoring()
-            } else {
-                stopMonitoring()
-            }
-        }
-    }
-    @Published var launchAtLogin = (SMAppService.mainApp.status == .enabled) {
-        didSet {
-            // Cada vez que el toggle de la UI cambia, registramos o eliminamos el servicio.
-            if launchAtLogin {
-                ServiceManager.register()
-            } else {
-                ServiceManager.unregister()
-            }
-        }
-    }
+    // MARK: - Variables de Estado (Publicadas para la UI)
+    @Published var isMonitoringActive = false { didSet { if isMonitoringActive { startMonitoring() } else { stopMonitoring() } } }
+    @Published var launchAtLogin = (SMAppService.mainApp.status == .enabled) { didSet { if launchAtLogin { ServiceManager.register() } else { ServiceManager.unregister() } } }
+    @Published var invertDragDirection = false
 
+    // MARK: - Variables Internas
     private var eventTap: CFMachPort?
     private var isMiddleMouseDown = false
     private var initialMouseLocation: CGPoint?
-    private var hasMovedToNextSpace = false
-    
-    // ¡NUEVA VARIABLE! El temporizador para diferenciar clic de arrastre.
-    private var clickTimer: Timer?
+    private var isWaitingForMissionControlExit = false // Para la "cárcel" de Mission Control
 
-    // --- Referencias a la UI ---
-    var statusItem: NSStatusItem?
+    // MARK: - Referencias a la UI
     var window: NSWindow?
-
-    // --- Ciclo de Vida de la App ---
+    var statusItem: NSStatusItem?
+    
+    // MARK: - Ciclo de Vida de la App
     func applicationDidFinishLaunching(_ note: Notification) {
         requestPermissions()
-        // Activamos el monitoreo por defecto al iniciar la app.
         isMonitoringActive = true
     }
     
@@ -64,125 +39,107 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         return false
     }
 
-    // --- Lógica Principal del Event Tap ---
+    // MARK: - Lógica Principal del Event Tap (LÓGICA ESTABLE)
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        
+        // --- Lógica para cuando ESTAMOS DENTRO de Mission Control ---
+        if isWaitingForMissionControlExit {
+            if type == .otherMouseDown {
+                SystemActionRunner.activateMissionControl() // Llama de nuevo para salir
+                isWaitingForMissionControlExit = false
+                return nil // Consume el evento
+            }
+            return Unmanaged.passUnretained(event) // Ignora otros eventos
+        }
+
+        // --- Lógica para cuando NO ESTAMOS en Mission Control ---
         switch type {
         case .otherMouseDown:
+            // Al presionar, solo guardamos el estado inicial. No hacemos ninguna acción.
             isMiddleMouseDown = true
             initialMouseLocation = event.location
-            hasMovedToNextSpace = false
-            
-            clickTimer?.invalidate() // Cancelamos cualquier temporizador anterior.
-            
-            // Creamos un temporizador que se disparará en 0.15 segundos.
-            // Si el ratón no se mueve en ese tiempo, se considera un clic.
-            clickTimer = Timer.scheduledTimer(withTimeInterval: 0.15, repeats: false) { [weak self] _ in
-                guard let self = self else { return }
-                
-                print("El temporizador se completó. ¡Esto es un CLIC!")
-                SystemActionRunner.activateMissionControl()
-                
-                // Anulamos el evento original de "mouse up" para que no haga nada más.
-                // Para ello, deshabilitamos y rehabilitamos el tap momentáneamente.
-                if let tap = self.eventTap {
-                    CGEvent.tapEnable(tap: tap, enable: false)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        CGEvent.tapEnable(tap: tap, enable: true)
-                    }
-                }
-            }
-            
-            return Unmanaged.passUnretained(event)
             
         case .otherMouseUp:
-            // Si soltamos el botón ANTES de que el temporizador termine, también es un clic.
-            if let timer = clickTimer, timer.isValid {
-                print("Se soltó el botón rápidamente. ¡Esto es un CLIC!")
-                timer.invalidate()
-                SystemActionRunner.activateMissionControl()
-                return nil // "Robamos" el evento para que no haga nada más (ej. cerrar pestaña).
-            }
-            isMiddleMouseDown = false
-            initialMouseLocation = nil
-            
-        case .mouseMoved, .otherMouseDragged:
+            // Toda la lógica ocurre al soltar el botón.
             guard isMiddleMouseDown, let startLocation = initialMouseLocation else {
+                isMiddleMouseDown = false
                 return Unmanaged.passUnretained(event)
             }
             
-            let currentLocation = event.location
-            let distance = hypot(currentLocation.x - startLocation.x, currentLocation.y - startLocation.y)
+            isMiddleMouseDown = false
+            let endLocation = event.location
+            let deltaX = endLocation.x - startLocation.x
+            let distance = hypot(deltaX, endLocation.y - startLocation.y)
             
-            // Si nos movemos una distancia mínima, cancelamos el temporizador. ¡No es un clic!
-            if distance > 5.0 {
-                clickTimer?.invalidate()
-            }
-
-            if !hasMovedToNextSpace {
-                let deltaX = currentLocation.x - startLocation.x
-                let threshold: CGFloat = 40.0 // Umbral de arrastre
-                
-                if deltaX > threshold {
-                    SystemActionRunner.moveToNextSpace()
-                    hasMovedToNextSpace = true
-                    return nil
-                } else if deltaX < -threshold {
-                    SystemActionRunner.moveToPreviousSpace()
-                    hasMovedToNextSpace = true
-                    return nil
+            let dragThreshold: CGFloat = 40.0 // Umbral para considerar un arrastre
+            let clickThreshold: CGFloat = 10.0 // Umbral para considerar un clic
+            
+            if abs(deltaX) > dragThreshold {
+                // Es un arrastre claro para cambiar de espacio.
+                if deltaX > 0 { // Movimiento a la derecha
+                    if invertDragDirection { SystemActionRunner.moveToPreviousSpace() } else { SystemActionRunner.moveToNextSpace() }
+                } else { // Movimiento a la izquierda
+                    if invertDragDirection { SystemActionRunner.moveToNextSpace() } else { SystemActionRunner.moveToPreviousSpace() }
                 }
+            } else if distance < clickThreshold {
+                // Es un clic claro, el ratón apenas se movió.
+                triggerMissionControlAction()
             }
             
+            // Si el movimiento fue intermedio (ni un clic claro ni un arrastre claro), no hacemos nada.
+            // Consumimos el evento para evitar efectos secundarios.
+            return nil
+
         default:
+            // Ignoramos otros eventos como .mouseMoved
             break
         }
         
         return Unmanaged.passUnretained(event)
     }
 
-    // --- Funciones de Inicio y Parada del Monitoreo ---
+    // MARK: - Funciones de Ayuda
+    private func triggerMissionControlAction() {
+        print("Acción de Mission Control disparada.")
+        SystemActionRunner.activateMissionControl()
+        isWaitingForMissionControlExit = true
+    }
+
+    // MARK: - Funciones de Monitoreo
     private func startMonitoring() {
         guard eventTap == nil else { return }
-        
+        // Solo escuchamos los eventos de presionar y soltar.
         let eventsToMonitor: CGEventMask =
             (1 << CGEventType.otherMouseDown.rawValue) |
-            (1 << CGEventType.otherMouseUp.rawValue) |
-            (1 << CGEventType.mouseMoved.rawValue) |
-            (1 << CGEventType.otherMouseDragged.rawValue)
-
-        eventTap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
-            eventsOfInterest: eventsToMonitor, callback: eventTapCallback,
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
-        )
-        
+            (1 << CGEventType.otherMouseUp.rawValue)
+            
+        eventTap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: eventsToMonitor, callback: eventTapCallback, userInfo: Unmanaged.passUnretained(self).toOpaque())
         if let tap = eventTap {
             let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
             CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
             CGEvent.tapEnable(tap: tap, enable: true)
-            print("Monitor iniciado.")
+            print("Monitor estable iniciado.")
         }
     }
 
     private func stopMonitoring() {
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
-            CFMachPortInvalidate(tap) // Liberamos el recurso
+            CFMachPortInvalidate(tap)
             eventTap = nil
             print("Monitor detenido.")
         }
     }
     
-    // --- Gestión de la Ventana y Barra de Menús ---
+    // MARK: - Gestión de UI
     func moveToMenuBar() {
         self.window = NSApplication.shared.windows.first
         self.window?.close()
-        
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem?.button {
             button.image = NSImage(systemSymbolName: "cursorarrow.click.badge.clock", accessibilityDescription: "BuenMouse")
             button.action = #selector(showMainWindow)
-            button.target = self // ¡Importante! Especificar el target.
+            button.target = self
         }
     }
     
@@ -192,11 +149,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         statusItem = nil
     }
 
-    // --- Permisos ---
+    // MARK: - Permisos
     private func requestPermissions() {
         let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as NSString: true]
-        if !AXIsProcessTrustedWithOptions(opts) {
-            print("AppDelegate: Permisos de accesibilidad no concedidos.")
-        }
+        if !AXIsProcessTrustedWithOptions(opts) { print("Permisos de accesibilidad no concedidos.") }
     }
 }

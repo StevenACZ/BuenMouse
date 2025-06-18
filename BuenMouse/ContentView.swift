@@ -1,5 +1,5 @@
 // Archivo: ContentView.swift
-// VERSIÓN FINAL CON DISEÑO MEJORADO Y TODAS LAS OPCIONES
+// VERSIÓN COMPLETA DE LA INTERFAZ
 
 import SwiftUI
 
@@ -9,7 +9,6 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             
-            // --- Cabecera ---
             HStack {
                 Image(systemName: "cursorarrow.and.square.on.square.dashed")
                     .font(.largeTitle)
@@ -23,39 +22,39 @@ struct ContentView: View {
                 }
             }
             
-            // --- Descripción ---
             VStack(alignment: .leading, spacing: 10) {
                 Text("Funciones Activas:")
                     .font(.headline)
                 Label("Clic Central: Abrir Mission Control", systemImage: "arrow.up.and.down.and.arrow.left.and.right")
                 Label("Arrastrar con Clic Central: Cambiar de Espacio", systemImage: "rectangle.split.2x1")
             }
+            .padding(.bottom, 10)
             
             Divider()
             
-            // --- Controles ---
             VStack(alignment: .leading, spacing: 15) {
                 Text("Ajustes:")
                     .font(.headline)
                 
-                // Toggle para activar/desactivar la app.
                 Toggle(isOn: $appDelegate.isMonitoringActive) {
                     Text("Activar monitoreo de gestos")
                 }
                 .toggleStyle(.switch)
                 
-                // Toggle para abrir al inicio.
                 Toggle(isOn: $appDelegate.launchAtLogin) {
                     Text("Abrir BuenMouse al iniciar sesión")
+                }
+                .toggleStyle(.switch)
+                
+                Toggle(isOn: $appDelegate.invertDragDirection) {
+                    Text("Invertir dirección de arrastre para espacios")
                 }
                 .toggleStyle(.switch)
             }
             
             Spacer()
             
-            // --- Botones de Acción ---
             HStack {
-                // Botón para mover a la barra de menús.
                 Button {
                     appDelegate.moveToMenuBar()
                 } label: {
@@ -64,13 +63,12 @@ struct ContentView: View {
                 
                 Spacer()
                 
-                // Botón para salir.
                 Button("Salir") {
                     NSApplication.shared.terminate(nil)
                 }
             }
         }
         .padding(30)
-        .frame(width: 450, height: 380)
+        .frame(width: 450, height: 420)
     }
 }

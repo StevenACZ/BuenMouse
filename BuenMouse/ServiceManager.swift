@@ -1,5 +1,5 @@
 // Archivo: ServiceManager.swift
-// VERSIÓN CON SINTAXIS CORREGIDA
+// VERSIÓN COMPLETA Y CORREGIDA
 
 import Foundation
 import ServiceManagement
@@ -7,7 +7,6 @@ import ServiceManagement
 enum ServiceManager {
     static func register() {
         do {
-            // La sintaxis correcta es .mainApp
             try SMAppService.mainApp.register()
             print("Servicio de inicio registrado con éxito.")
         } catch {
@@ -17,7 +16,6 @@ enum ServiceManager {
     
     static func unregister() {
         do {
-            // La sintaxis correcta es .mainApp
             try SMAppService.mainApp.unregister()
             print("Servicio de inicio eliminado con éxito.")
         } catch {
