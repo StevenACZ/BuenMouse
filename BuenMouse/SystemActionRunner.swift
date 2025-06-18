@@ -1,31 +1,21 @@
 // Archivo: SystemActionRunner.swift
-// VERSIÓN COMPLETA Y FIABLE USANDO APPLESCRIPT
+// VERSIÓN SIMPLE Y ESTABLE
 
 import Foundation
+import AppKit
 
 enum SystemActionRunner {
     
     static func activateMissionControl() {
-        let scriptSource = "tell application \"Mission Control\" to launch"
-        runAppleScript(source: scriptSource)
+        runAppleScript(source: "tell application \"Mission Control\" to launch")
     }
     
     static func moveToNextSpace() {
-        let scriptSource = """
-        tell application "System Events"
-            key code 124 using {control down}
-        end tell
-        """
-        runAppleScript(source: scriptSource)
+        runAppleScript(source: "tell application \"System Events\" to key code 124 using {control down}")
     }
     
     static func moveToPreviousSpace() {
-        let scriptSource = """
-        tell application "System Events"
-            key code 123 using {control down}
-        end tell
-        """
-        runAppleScript(source: scriptSource)
+        runAppleScript(source: "tell application \"System Events\" to key code 123 using {control down}")
     }
     
     private static func runAppleScript(source: String) {
@@ -33,7 +23,6 @@ enum SystemActionRunner {
             if let script = NSAppleScript(source: source) {
                 var error: NSDictionary?
                 script.executeAndReturnError(&error)
-                
                 if let err = error {
                     DispatchQueue.main.async {
                         print("Error de AppleScript: \(err)")

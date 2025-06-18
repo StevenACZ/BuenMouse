@@ -1,11 +1,11 @@
 // Archivo: AppDelegate.swift
-// VERSIÓN COMPLETA Y FINAL CON SENSIBILIDAD CONFIGURABLE
+// VERSIÓN FINAL RESILIENTE CON RECREACIÓN AUTOMÁTICA DEL EVENT TAP
 
 import Cocoa
 import ApplicationServices
 import ServiceManagement
 
-// --- Función C Global Segura (sin cambios) ---
+// --- Función C Global Segura para el Event Tap ---
 private func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
     guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
     let myself = Unmanaged<AppDelegate>.fromOpaque(refcon).takeUnretainedValue()
@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     
     @Published var isMonitoringActive = false {
         didSet {
+            // Cada vez que este valor cambia, iniciamos o detenemos el monitoreo.
             if isMonitoringActive {
                 startMonitoring()
             } else {
@@ -36,28 +37,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         }
     }
     
-    @Published var invertDragDirection: Bool = UserDefaults.standard.bool(forKey: "invertDragDirection") {
-        didSet {
-            UserDefaults.standard.set(invertDragDirection, forKey: "invertDragDirection")
-        }
-    }
-
-    // ¡NUEVA VARIABLE! La sensibilidad del arrastre, ahora configurable.
-    // La cargamos desde UserDefaults al iniciar, con un valor por defecto de 40.0.
+    @Published var invertDragDirection = false
+    
     @Published var dragThreshold: Double = UserDefaults.standard.double(forKey: "dragThreshold") == 0 ? 40.0 : UserDefaults.standard.double(forKey: "dragThreshold") {
         didSet {
-            // Cada vez que el slider cambia, guardamos el nuevo valor.
             UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold")
         }
     }
 
-    // MARK: - Variables Internas
+    // MARK: - Máquina de Estados del Gesto
     
+    private enum GestureState {
+        case idle // Esperando una acción
+        case tracking(startLocation: CGPoint, timer: Timer) // Botón presionado, decidiendo si es clic o arrastre
+        case dragging(startLocation: CGPoint) // Gesto confirmado como arrastre
+        case inMissionControl // Mission Control está activo en pantalla
+    }
+    private var currentState: GestureState = .idle
     private var eventTap: CFMachPort?
-    private var isMiddleMouseDown = false
-    private var initialMouseLocation: CGPoint?
-    private var isWaitingForMissionControlExit = false
-
+    
     // MARK: - Referencias a la UI
     
     var window: NSWindow?
@@ -67,6 +65,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     
     func applicationDidFinishLaunching(_ note: Notification) {
         requestPermissions()
+        
+        // Nos suscribimos a la notificación de cambio de espacio.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(spaceDidChange),
+            name: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil
+        )
+        
+        // Activamos el monitoreo por defecto al iniciar la app.
         isMonitoringActive = true
     }
     
@@ -74,78 +82,95 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         return false
     }
 
-    // MARK: - Lógica Principal del Event Tap
+    // MARK: - Lógica de Resiliencia
+    
+    // Esta función se llama automáticamente cuando salimos de Mission Control o cambiamos de escritorio.
+    @objc func spaceDidChange() {
+        print("Cambio de espacio detectado. Asegurando que el monitor esté activo.")
+        
+        // Si el monitoreo debería estar activo, lo reiniciamos para asegurar que no se invalidó.
+        if isMonitoringActive {
+            // Reiniciar es tan simple como detener y volver a iniciar.
+            stopMonitoring()
+            startMonitoring()
+        }
+        
+        // También reseteamos el estado de Mission Control por si acaso.
+        if case .inMissionControl = currentState {
+            currentState = .idle
+        }
+    }
+    
+    // MARK: - Lógica Principal del Event Tap (Máquina de Estados)
     
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        
-        if isWaitingForMissionControlExit {
+        let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
+        guard buttonNumber == 2 else { return Unmanaged.passUnretained(event) }
+
+        switch currentState {
+        case .idle:
             if type == .otherMouseDown {
-                SystemActionRunner.activateMissionControl()
-                isWaitingForMissionControlExit = false
+                let timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { [weak self] _ in self?.triggerMissionControlAction() }
+                currentState = .tracking(startLocation: event.location, timer: timer)
+            }
+        case .tracking(let startLocation, let timer):
+            if type == .otherMouseUp {
+                timer.invalidate()
+                triggerMissionControlAction()
                 return nil
             }
-            return Unmanaged.passUnretained(event)
-        }
-
-        switch type {
-        case .otherMouseDown:
-            isMiddleMouseDown = true
-            initialMouseLocation = event.location
-            
-        case .otherMouseUp:
-            guard isMiddleMouseDown, let startLocation = initialMouseLocation else {
-                isMiddleMouseDown = false
-                return Unmanaged.passUnretained(event)
-            }
-            
-            isMiddleMouseDown = false
-            let endLocation = event.location
-            let deltaX = endLocation.x - startLocation.x
-            let distance = hypot(deltaX, endLocation.y - startLocation.y)
-            
-            let clickThreshold: CGFloat = 10.0
-            
-            // Usamos la variable de la clase, que es configurable.
-            if abs(deltaX) > CGFloat(dragThreshold) {
-                if deltaX > 0 {
-                    if invertDragDirection { SystemActionRunner.moveToPreviousSpace() } else { SystemActionRunner.moveToNextSpace() }
-                } else {
-                    if invertDragDirection { SystemActionRunner.moveToNextSpace() } else { SystemActionRunner.moveToPreviousSpace() }
+            if type == .mouseMoved || type == .otherMouseDragged {
+                if hypot(event.location.x - startLocation.x, event.location.y - startLocation.y) > 8.0 {
+                    timer.invalidate()
+                    currentState = .dragging(startLocation: startLocation)
                 }
-            } else if distance < clickThreshold {
-                triggerMissionControlAction()
             }
-            
-            return nil
-
-        default:
-            break
+        case .dragging(let startLocation):
+            if type == .otherMouseUp {
+                currentState = .idle
+                return nil
+            }
+            if type == .mouseMoved || type == .otherMouseDragged {
+                let deltaX = event.location.x - startLocation.x
+                if abs(deltaX) > CGFloat(dragThreshold) {
+                    if deltaX > 0 {
+                        if invertDragDirection { SystemActionRunner.moveToPreviousSpace() } else { SystemActionRunner.moveToNextSpace() }
+                    } else {
+                        if invertDragDirection { SystemActionRunner.moveToNextSpace() } else { SystemActionRunner.moveToPreviousSpace() }
+                    }
+                    currentState = .idle
+                    return nil
+                }
+            }
+        case .inMissionControl:
+            if type == .otherMouseDown {
+                SystemActionRunner.activateMissionControl()
+                currentState = .idle
+                return nil
+            }
         }
-        
         return Unmanaged.passUnretained(event)
     }
 
     // MARK: - Funciones de Ayuda
     
     private func triggerMissionControlAction() {
+        if case .inMissionControl = currentState { return }
         SystemActionRunner.activateMissionControl()
-        isWaitingForMissionControlExit = true
+        currentState = .inMissionControl
     }
 
     // MARK: - Funciones de Monitoreo
     
     private func startMonitoring() {
         guard eventTap == nil else { return }
-        let eventsToMonitor: CGEventMask =
-            (1 << CGEventType.otherMouseDown.rawValue) |
-            (1 << CGEventType.otherMouseUp.rawValue)
-            
+        let eventsToMonitor: CGEventMask = (1 << CGEventType.otherMouseDown.rawValue) | (1 << CGEventType.otherMouseUp.rawValue) | (1 << CGEventType.mouseMoved.rawValue) | (1 << CGEventType.otherMouseDragged.rawValue)
         eventTap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap, eventsOfInterest: eventsToMonitor, callback: eventTapCallback, userInfo: Unmanaged.passUnretained(self).toOpaque())
         if let tap = eventTap {
             let runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
             CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
             CGEvent.tapEnable(tap: tap, enable: true)
-            print("Monitor estable iniciado.")
+            print("Monitor (Máquina de Estados) iniciado.")
         }
     }
 
@@ -154,6 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             CGEvent.tapEnable(tap: tap, enable: false)
             CFMachPortInvalidate(tap)
             eventTap = nil
+            currentState = .idle
             print("Monitor detenido.")
         }
     }
