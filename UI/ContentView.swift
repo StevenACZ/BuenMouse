@@ -6,9 +6,11 @@ struct ContentView<Settings: SettingsProtocol>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 12) {
-                Image(systemName: "cursorarrow.and.square.on.square.dashed")
-                    .font(.system(size: 36))
-                    .foregroundColor(.accentColor)
+                Image("AppLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 60, height: 60)
+                    .cornerRadius(8)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("BuenMouse")
                         .font(.title2)
@@ -28,8 +30,13 @@ struct ContentView<Settings: SettingsProtocol>: View {
                         .padding(.bottom, 12)
 
                     Toggle("Enable gesture monitoring", isOn: $settings.isMonitoringActive)
+                        .animation(.default, value: settings.isMonitoringActive)
+
                     Toggle("Launch at login", isOn: $settings.launchAtLogin)
+                        .animation(.default, value: settings.launchAtLogin)
+
                     Toggle("Start in menubar", isOn: $settings.startInMenubar)
+                        .animation(.default, value: settings.startInMenubar)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -42,12 +49,14 @@ struct ContentView<Settings: SettingsProtocol>: View {
                         .padding(.bottom, 12)
 
                     Toggle("Invert drag direction", isOn: $settings.invertDragDirection)
+                        .animation(.default, value: settings.invertDragDirection)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Drag sensitivity: \(Int(settings.dragThreshold)) px")
                             .font(.footnote)
                             .foregroundColor(.secondary)
                         Slider(value: $settings.dragThreshold, in: 20...1000, step: 10)
+                            .animation(.default, value: settings.dragThreshold)
                     }
                 }
                 .padding(16)
@@ -61,13 +70,17 @@ struct ContentView<Settings: SettingsProtocol>: View {
                         .padding(.bottom, 12)
 
                     Toggle("Enable Ctrl + Scroll zoom", isOn: $settings.enableScrollZoom)
+                        .animation(.default, value: settings.enableScrollZoom)
+
                     Toggle("Invert global scroll", isOn: $settings.invertScroll)
+                        .animation(.default, value: settings.invertScroll)
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Zoom sensitivity: \(String(format: "%.1f", settings.zoomThreshold))")
                             .font(.footnote)
                             .foregroundColor(.secondary)
                         Slider(value: $settings.zoomThreshold, in: 0.5...5.0, step: 0.1)
+                            .animation(.default, value: settings.zoomThreshold)
                     }
                 }
                 .padding(16)
