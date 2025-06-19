@@ -20,19 +20,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     }
 
     @Published var startInMenubar = UserDefaults.standard.bool(forKey: "startInMenubar") {
-        didSet { UserDefaults.standard.set(startInMenubar, forKey: "startInMenubar") }
+        didSet {
+            UserDefaults.standard.set(startInMenubar, forKey: "startInMenubar")
+            if startInMenubar {
+                moveToMenuBar()
+            }
+        }
     }
 
     @Published var invertDragDirection = UserDefaults.standard.bool(forKey: "invertDragDirection") {
         didSet { UserDefaults.standard.set(invertDragDirection, forKey: "invertDragDirection") }
     }
 
-    @Published var dragThreshold: Double = UserDefaults.standard.double(forKey: "dragThreshold") == 0 ? 40.0 : UserDefaults.standard.double(forKey: "dragThreshold") {
-        didSet { UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold") }
+    @Published var dragThreshold: Double = {
+        let val = UserDefaults.standard.double(forKey: "dragThreshold")
+        return val == 0 ? 40.0 : val
+    }() {
+        didSet {
+            if dragThreshold < 5 { dragThreshold = 5 }
+            UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold")
+        }
     }
 
-    @Published var invertScroll = false {
-        didSet { restartMonitoring() }
+    @Published var invertScroll = UserDefaults.standard.bool(forKey: "invertScroll") {
+        didSet {
+            UserDefaults.standard.set(invertScroll, forKey: "invertScroll")
+            restartMonitoring()
+        }
     }
 
     private enum GestureState {
@@ -50,6 +64,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
 
     func applicationDidFinishLaunching(_ note: Notification) {
         requestPermissions()
+
+        if UserDefaults.standard.bool(forKey: "startInMenubar") {
+            moveToMenuBar()
+        }
+
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)
             .sink { [weak self] _ in self?.spaceDidChange() }
             .store(in: &cancellables)
@@ -63,16 +82,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
                 window.styleMask.remove(.resizable)
             }
         }
+    }
 
-        if startInMenubar {
-            moveToMenuBar()
-        }
+    func applicationWillTerminate(_ notification: Notification) {
+        stopMonitoring()
     }
 
     private func requestPermissions() {
-        let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as NSString: true]
-        if !AXIsProcessTrustedWithOptions(opts) {
-            print("Accessibility permissions not granted.")
+        if !AXIsProcessTrusted() {
+            let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as NSString: true]
+            _ = AXIsProcessTrustedWithOptions(opts)
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "Accessibility permissions required"
+                alert.informativeText = "Please enable BuenMouse in System Preferences > Security & Privacy > Accessibility."
+                alert.runModal()
+            }
         }
     }
 
@@ -127,13 +152,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .scrollWheel && invertScroll {
             let isContinuous = event.getIntegerValueField(.scrollWheelEventIsContinuous)
-            // print("Scroll event: isContinuous = \(isContinuous)")
-            
             if isContinuous == 0 {
-                // Probably a mouse — invert scroll
                 let y = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
                 event.setDoubleValueField(.scrollWheelEventDeltaAxis1, value: -y)
-
                 let x = event.getDoubleValueField(.scrollWheelEventDeltaAxis2)
                 event.setDoubleValueField(.scrollWheelEventDeltaAxis2, value: -x)
             }
@@ -147,23 +168,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
             if type == .otherMouseDown {
                 currentState = .tracking(startLocation: event.location)
             }
+
         case .tracking(let startLocation):
             if type == .otherMouseUp {
                 SystemActionRunner.activateMissionControl()
                 currentState = .idle
-                return nil
-            }
-            if type == .mouseMoved || type == .otherMouseDragged {
+            } else if type == .mouseMoved || type == .otherMouseDragged {
                 if hypot(event.location.x - startLocation.x, event.location.y - startLocation.y) > 8.0 {
                     currentState = .dragging(startLocation: startLocation)
                 }
             }
+
         case .dragging(let startLocation):
             if type == .otherMouseUp {
                 currentState = .idle
-                return nil
-            }
-            if type == .mouseMoved || type == .otherMouseDragged {
+            } else if type == .mouseMoved || type == .otherMouseDragged {
                 let deltaX = event.location.x - startLocation.x
                 if abs(deltaX) > CGFloat(dragThreshold) {
                     if deltaX > 0 {
@@ -172,14 +191,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
                         invertDragDirection ? SystemActionRunner.moveToNextSpace() : SystemActionRunner.moveToPreviousSpace()
                     }
                     currentState = .idle
-                    return nil
                 }
             }
+
         case .inMissionControl:
             if type == .otherMouseDown {
                 SystemActionRunner.activateMissionControl()
                 currentState = .idle
-                return nil
             }
         }
 
@@ -189,6 +207,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     func moveToMenuBar() {
         window?.close()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        UserDefaults.standard.set(true, forKey: "startInMenubar")
         if let button = statusItem?.button {
             button.image = NSImage(systemSymbolName: "cursorarrow.click.badge.clock", accessibilityDescription: "BuenMouse")
             button.action = #selector(showMainWindow)
@@ -202,5 +221,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         statusItem = nil
+        UserDefaults.standard.set(false, forKey: "startInMenubar")
     }
 }
