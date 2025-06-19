@@ -7,6 +7,6 @@ protocol SettingsProtocol: ObservableObject {
     var startInMenubar: Bool { get set }
     var invertDragDirection: Bool { get set }
     var dragThreshold: Double { get set }
-    
+    var invertScroll: Bool { get set }
     func moveToMenuBar()
 }

@@ -2,7 +2,6 @@ import Cocoa
 import ApplicationServices
 import ServiceManagement
 import Combine
-import os
 
 private func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
     guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
@@ -20,6 +19,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         didSet { launchAtLogin ? ServiceManager.register() : ServiceManager.unregister() }
     }
 
+    @Published var startInMenubar = UserDefaults.standard.bool(forKey: "startInMenubar") {
+        didSet { UserDefaults.standard.set(startInMenubar, forKey: "startInMenubar") }
+    }
+
     @Published var invertDragDirection = UserDefaults.standard.bool(forKey: "invertDragDirection") {
         didSet { UserDefaults.standard.set(invertDragDirection, forKey: "invertDragDirection") }
     }
@@ -27,9 +30,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     @Published var dragThreshold: Double = UserDefaults.standard.double(forKey: "dragThreshold") == 0 ? 40.0 : UserDefaults.standard.double(forKey: "dragThreshold") {
         didSet { UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold") }
     }
-    
-    @Published var startInMenubar = UserDefaults.standard.bool(forKey: "startInMenubar") {
-        didSet { UserDefaults.standard.set(startInMenubar, forKey: "startInMenubar") }
+
+    @Published var invertScroll = false {
+        didSet { restartMonitoring() }
     }
 
     private enum GestureState {
@@ -38,11 +41,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         case dragging(startLocation: CGPoint)
         case inMissionControl
     }
+
     private var currentState: GestureState = .idle
     private var eventTap: CFMachPort?
-    private var dragTimer: DispatchSourceTimer?
     private var cancellables = Set<AnyCancellable>()
-    
     var window: NSWindow?
     var statusItem: NSStatusItem?
 
@@ -67,9 +69,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         }
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    private func requestPermissions() {
+        let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as NSString: true]
+        if !AXIsProcessTrustedWithOptions(opts) {
+            print("Accessibility permissions not granted.")
+        }
+    }
 
-    @objc private func spaceDidChange() {
+    private func spaceDidChange() {
         if isMonitoringActive { restartMonitoring() }
         if case .inMissionControl = currentState { currentState = .idle }
     }
@@ -79,25 +86,75 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         startMonitoring()
     }
 
+    private func startMonitoring() {
+        guard eventTap == nil else { return }
+
+        var mask: CGEventMask =
+            (1 << CGEventType.otherMouseDown.rawValue) |
+            (1 << CGEventType.otherMouseUp.rawValue) |
+            (1 << CGEventType.mouseMoved.rawValue) |
+            (1 << CGEventType.otherMouseDragged.rawValue)
+
+        if invertScroll {
+            mask |= (1 << CGEventType.scrollWheel.rawValue)
+        }
+
+        eventTap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .defaultTap,
+            eventsOfInterest: mask,
+            callback: eventTapCallback,
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        )
+
+        if let tap = eventTap {
+            let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+            CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
+            CGEvent.tapEnable(tap: tap, enable: true)
+        }
+    }
+
+    private func stopMonitoring() {
+        if let tap = eventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+            CFMachPortInvalidate(tap)
+            eventTap = nil
+            currentState = .idle
+        }
+    }
+
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        if type == .scrollWheel && invertScroll {
+            let isContinuous = event.getIntegerValueField(.scrollWheelEventIsContinuous)
+            // print("Scroll event: isContinuous = \(isContinuous)")
+            
+            if isContinuous == 0 {
+                // Probably a mouse — invert scroll
+                let y = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
+                event.setDoubleValueField(.scrollWheelEventDeltaAxis1, value: -y)
+
+                let x = event.getDoubleValueField(.scrollWheelEventDeltaAxis2)
+                event.setDoubleValueField(.scrollWheelEventDeltaAxis2, value: -x)
+            }
+        }
+
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
         guard buttonNumber == 2 else { return Unmanaged.passUnretained(event) }
 
         switch currentState {
         case .idle:
             if type == .otherMouseDown {
-                scheduleDragTimer()
                 currentState = .tracking(startLocation: event.location)
             }
         case .tracking(let startLocation):
             if type == .otherMouseUp {
-                cancelDragTimer()
-                triggerMissionControlAction()
+                SystemActionRunner.activateMissionControl()
+                currentState = .idle
                 return nil
             }
             if type == .mouseMoved || type == .otherMouseDragged {
                 if hypot(event.location.x - startLocation.x, event.location.y - startLocation.y) > 8.0 {
-                    cancelDragTimer()
                     currentState = .dragging(startLocation: startLocation)
                 }
             }
@@ -129,56 +186,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         return Unmanaged.passUnretained(event)
     }
 
-    private func triggerMissionControlAction() {
-        if case .inMissionControl = currentState { return }
-        SystemActionRunner.activateMissionControl()
-        currentState = .inMissionControl
-    }
-
-    private func scheduleDragTimer() {
-        dragTimer = DispatchSource.makeTimerSource(queue: .main)
-        dragTimer?.schedule(deadline: .now() + 0.2)
-        dragTimer?.setEventHandler { [weak self] in
-            self?.triggerMissionControlAction()
-        }
-        dragTimer?.resume()
-    }
-
-    private func cancelDragTimer() {
-        dragTimer?.cancel()
-        dragTimer = nil
-    }
-
-    private func startMonitoring() {
-        guard eventTap == nil else { return }
-        let mask: CGEventMask = (1 << CGEventType.otherMouseDown.rawValue) |
-                                (1 << CGEventType.otherMouseUp.rawValue) |
-                                (1 << CGEventType.mouseMoved.rawValue) |
-                                (1 << CGEventType.otherMouseDragged.rawValue)
-        eventTap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: mask,
-            callback: eventTapCallback,
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
-        )
-        if let tap = eventTap {
-            let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-            CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
-            CGEvent.tapEnable(tap: tap, enable: true)
-        }
-    }
-
-    private func stopMonitoring() {
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-            CFMachPortInvalidate(tap)
-            eventTap = nil
-            currentState = .idle
-        }
-    }
-
     func moveToMenuBar() {
         window?.close()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -186,8 +193,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
             button.image = NSImage(systemSymbolName: "cursorarrow.click.badge.clock", accessibilityDescription: "BuenMouse")
             button.action = #selector(showMainWindow)
             button.target = self
-            button.setAccessibilityLabel("Icono de BuenMouse")
-            button.setAccessibilityHelp("Haz clic para abrir la ventana principal")
+            button.setAccessibilityLabel("BuenMouse icon")
+            button.setAccessibilityHelp("Click to open main window")
         }
     }
 
@@ -195,12 +202,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         statusItem = nil
-    }
-
-    private func requestPermissions() {
-        let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as NSString: true]
-        if !AXIsProcessTrustedWithOptions(opts) {
-            print("Permisos de accesibilidad no concedidos.")
-        }
     }
 }

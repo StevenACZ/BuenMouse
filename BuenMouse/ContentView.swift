@@ -1,13 +1,10 @@
 import SwiftUI
 
-// La vista espera un objeto que cumpla con SettingsProtocol
 struct ContentView<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            
-            // Cabecera
+        VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .center, spacing: 12) {
                 Image(systemName: "cursorarrow.and.square.on.square.dashed")
                     .font(.system(size: 36))
@@ -16,7 +13,7 @@ struct ContentView<Settings: SettingsProtocol>: View {
                     Text("BuenMouse")
                         .font(.title2)
                         .fontWeight(.bold)
-                    Text("Tu asistente de productividad.")
+                    Text("Your productivity assistant")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -24,29 +21,26 @@ struct ContentView<Settings: SettingsProtocol>: View {
 
             Divider()
 
-            // Ajustes
-            VStack(alignment: .leading, spacing: 20) {
-                Label("Ajustes Generales", systemImage: "gear")
+            VStack(alignment: .leading, spacing: 8) {
+                Label("General Settings", systemImage: "gear")
                     .font(.headline)
-                
+
                 GroupBox {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Toggle("Activar monitoreo de gestos", isOn: $settings.isMonitoringActive)
-                        Toggle("Abrir BuenMouse al iniciar sesión", isOn: $settings.launchAtLogin)
-                        Toggle("Iniciar directamente en la barra de menús", isOn: $settings.startInMenubar)
-                        Toggle("Invertir dirección de arrastre", isOn: $settings.invertDragDirection)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Toggle("Enable gesture monitoring", isOn: $settings.isMonitoringActive)
+                        Toggle("Launch at login", isOn: $settings.launchAtLogin)
+                        Toggle("Start in menubar", isOn: $settings.startInMenubar)
+                        Toggle("Invert drag direction", isOn: $settings.invertDragDirection)
+                        Toggle("Invert global scroll", isOn: $settings.invertScroll)
 
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Sensibilidad de arrastre: \(Int(settings.dragThreshold)) px")
+                            Text("Drag sensitivity: \(Int(settings.dragThreshold)) px")
                                 .font(.footnote)
                                 .foregroundColor(.secondary)
                             Slider(value: $settings.dragThreshold, in: 20...1000, step: 10)
                         }
-                        .padding(.top, 20)
                     }
-                    .padding(.top, 20)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 20)
+                    .padding(12)
                 }
             }
 
@@ -54,19 +48,18 @@ struct ContentView<Settings: SettingsProtocol>: View {
                 Button {
                     settings.moveToMenuBar()
                 } label: {
-                    Label("Mover a la Barra de Menús", systemImage: "arrow.up.right.square")
+                    Label("Move to Menubar", systemImage: "arrow.up.right.square")
                 }
 
                 Spacer()
 
-                Button("Salir") {
+                Button("Quit") {
                     NSApplication.shared.terminate(nil)
                 }
                 .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(.vertical, 32)
-        .padding(.horizontal, 28)
+        .padding(20)
         .frame(width: 400, height: 440)
     }
 }
