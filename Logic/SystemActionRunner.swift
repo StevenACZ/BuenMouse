@@ -17,6 +17,26 @@ enum SystemActionRunner {
         runAppleScript(source: "tell application \"System Events\" to key code 123 using {control down}")
     }
 
+    static func zoomIn() {
+        sendKeyCombo(keyCode: 24, flags: [.maskCommand]) // Cmd +
+    }
+
+    static func zoomOut() {
+        sendKeyCombo(keyCode: 27, flags: [.maskCommand]) // Cmd -
+    }
+
+    private static func sendKeyCombo(keyCode: CGKeyCode, flags: CGEventFlags) {
+        let src = CGEventSource(stateID: .combinedSessionState)
+        let down = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: true)
+        down?.flags = flags
+        down?.post(tap: .cghidEventTap)
+
+        let up = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: false)
+        up?.flags = flags
+        up?.post(tap: .cghidEventTap)
+    }
+
+    
     private static func runAppleScript(source: String) {
         DispatchQueue.global(qos: .userInitiated).async {
             if let script = NSAppleScript(source: source) {

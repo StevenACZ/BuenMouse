@@ -49,6 +49,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         }
     }
 
+    @Published var enableScrollZoom = UserDefaults.standard.bool(forKey: "enableScrollZoom") {
+        didSet {
+            UserDefaults.standard.set(enableScrollZoom, forKey: "enableScrollZoom")
+        }
+    }
+
+    @Published var zoomThreshold: Double = {
+        let val = UserDefaults.standard.double(forKey: "zoomThreshold")
+        return val == 0 ? 2.0 : val
+    }() {
+        didSet {
+            if zoomThreshold < 0.5 { zoomThreshold = 0.5 }
+            UserDefaults.standard.set(zoomThreshold, forKey: "zoomThreshold")
+        }
+    }
+
     private enum GestureState {
         case idle
         case tracking(startLocation: CGPoint)
@@ -61,6 +77,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     private var cancellables = Set<AnyCancellable>()
     var window: NSWindow?
     var statusItem: NSStatusItem?
+
+    private var scrollAccumulator: Double = 0.0
 
     func applicationDidFinishLaunching(_ note: Notification) {
         requestPermissions()
@@ -77,7 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
 
         DispatchQueue.main.async { [weak self] in
             if let window = self?.window ?? NSApplication.shared.windows.first {
-                window.setContentSize(NSSize(width: 400, height: 440))
+                window.setContentSize(NSSize(width: 400, height: 500))
                 window.center()
                 window.styleMask.remove(.resizable)
             }
@@ -114,15 +132,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     private func startMonitoring() {
         guard eventTap == nil else { return }
 
-        var mask: CGEventMask =
+        let mask: CGEventMask =
             (1 << CGEventType.otherMouseDown.rawValue) |
             (1 << CGEventType.otherMouseUp.rawValue) |
             (1 << CGEventType.mouseMoved.rawValue) |
-            (1 << CGEventType.otherMouseDragged.rawValue)
-
-        if invertScroll {
-            mask |= (1 << CGEventType.scrollWheel.rawValue)
-        }
+            (1 << CGEventType.otherMouseDragged.rawValue) |
+            (1 << CGEventType.scrollWheel.rawValue)
 
         eventTap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -150,13 +165,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     }
 
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        if type == .scrollWheel && invertScroll {
-            let isContinuous = event.getIntegerValueField(.scrollWheelEventIsContinuous)
-            if isContinuous == 0 {
+        if type == .scrollWheel {
+            let flags = event.flags
+            let isControlPressed = flags.contains(.maskControl)
+
+            if invertScroll {
                 let y = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
                 event.setDoubleValueField(.scrollWheelEventDeltaAxis1, value: -y)
                 let x = event.getDoubleValueField(.scrollWheelEventDeltaAxis2)
                 event.setDoubleValueField(.scrollWheelEventDeltaAxis2, value: -x)
+            }
+
+            if enableScrollZoom && isControlPressed {
+                let deltaY = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
+                scrollAccumulator += deltaY
+
+                if scrollAccumulator >= zoomThreshold {
+                    SystemActionRunner.zoomIn()
+                    scrollAccumulator = 0.0
+                } else if scrollAccumulator <= -zoomThreshold {
+                    SystemActionRunner.zoomOut()
+                    scrollAccumulator = 0.0
+                }
             }
         }
 
