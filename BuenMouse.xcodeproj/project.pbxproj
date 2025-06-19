@@ -6,27 +6,8 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXContainerItemProxy section */
-		B06242DE2E0241D10061FE50 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = B06242C72E0241D00061FE50 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = B06242CE2E0241D00061FE50;
-			remoteInfo = BuenMouse;
-		};
-		B06242E82E0241D10061FE50 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = B06242C72E0241D00061FE50 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = B06242CE2E0241D00061FE50;
-			remoteInfo = BuenMouse;
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXFileReference section */
 		B06242CF2E0241D00061FE50 /* BuenMouse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BuenMouse.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B06242DD2E0241D10061FE50 /* BuenMouseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BuenMouseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		B06242E72E0241D10061FE50 /* BuenMouseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BuenMouseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -48,34 +29,10 @@
 			path = BuenMouse;
 			sourceTree = "<group>";
 		};
-		B06242E02E0241D10061FE50 /* BuenMouseTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = BuenMouseTests;
-			sourceTree = "<group>";
-		};
-		B06242EA2E0241D10061FE50 /* BuenMouseUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = BuenMouseUITests;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		B06242CC2E0241D00061FE50 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B06242DA2E0241D10061FE50 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B06242E42E0241D10061FE50 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -89,8 +46,6 @@
 			isa = PBXGroup;
 			children = (
 				B06242D12E0241D00061FE50 /* BuenMouse */,
-				B06242E02E0241D10061FE50 /* BuenMouseTests */,
-				B06242EA2E0241D10061FE50 /* BuenMouseUITests */,
 				B06242D02E0241D00061FE50 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -99,8 +54,6 @@
 			isa = PBXGroup;
 			children = (
 				B06242CF2E0241D00061FE50 /* BuenMouse.app */,
-				B06242DD2E0241D10061FE50 /* BuenMouseTests.xctest */,
-				B06242E72E0241D10061FE50 /* BuenMouseUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -130,52 +83,6 @@
 			productReference = B06242CF2E0241D00061FE50 /* BuenMouse.app */;
 			productType = "com.apple.product-type.application";
 		};
-		B06242DC2E0241D10061FE50 /* BuenMouseTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = B06242F42E0241D10061FE50 /* Build configuration list for PBXNativeTarget "BuenMouseTests" */;
-			buildPhases = (
-				B06242D92E0241D10061FE50 /* Sources */,
-				B06242DA2E0241D10061FE50 /* Frameworks */,
-				B06242DB2E0241D10061FE50 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				B06242DF2E0241D10061FE50 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				B06242E02E0241D10061FE50 /* BuenMouseTests */,
-			);
-			name = BuenMouseTests;
-			packageProductDependencies = (
-			);
-			productName = BuenMouseTests;
-			productReference = B06242DD2E0241D10061FE50 /* BuenMouseTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		B06242E62E0241D10061FE50 /* BuenMouseUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = B06242F72E0241D10061FE50 /* Build configuration list for PBXNativeTarget "BuenMouseUITests" */;
-			buildPhases = (
-				B06242E32E0241D10061FE50 /* Sources */,
-				B06242E42E0241D10061FE50 /* Frameworks */,
-				B06242E52E0241D10061FE50 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				B06242E92E0241D10061FE50 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				B06242EA2E0241D10061FE50 /* BuenMouseUITests */,
-			);
-			name = BuenMouseUITests;
-			packageProductDependencies = (
-			);
-			productName = BuenMouseUITests;
-			productReference = B06242E72E0241D10061FE50 /* BuenMouseUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -188,14 +95,6 @@
 				TargetAttributes = {
 					B06242CE2E0241D00061FE50 = {
 						CreatedOnToolsVersion = 16.4;
-					};
-					B06242DC2E0241D10061FE50 = {
-						CreatedOnToolsVersion = 16.4;
-						TestTargetID = B06242CE2E0241D00061FE50;
-					};
-					B06242E62E0241D10061FE50 = {
-						CreatedOnToolsVersion = 16.4;
-						TestTargetID = B06242CE2E0241D00061FE50;
 					};
 				};
 			};
@@ -214,28 +113,12 @@
 			projectRoot = "";
 			targets = (
 				B06242CE2E0241D00061FE50 /* BuenMouse */,
-				B06242DC2E0241D10061FE50 /* BuenMouseTests */,
-				B06242E62E0241D10061FE50 /* BuenMouseUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		B06242CD2E0241D00061FE50 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B06242DB2E0241D10061FE50 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B06242E52E0241D10061FE50 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -252,34 +135,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		B06242D92E0241D10061FE50 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		B06242E32E0241D10061FE50 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		B06242DF2E0241D10061FE50 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = B06242CE2E0241D00061FE50 /* BuenMouse */;
-			targetProxy = B06242DE2E0241D10061FE50 /* PBXContainerItemProxy */;
-		};
-		B06242E92E0241D10061FE50 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = B06242CE2E0241D00061FE50 /* BuenMouse */;
-			targetProxy = B06242E82E0241D10061FE50 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		B06242EF2E0241D10061FE50 /* Debug */ = {
@@ -464,74 +320,6 @@
 			};
 			name = Release;
 		};
-		B06242F52E0241D10061FE50 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = NXT93S55FY;
-				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = oliverio23.BuenMouseTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BuenMouse.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BuenMouse";
-			};
-			name = Debug;
-		};
-		B06242F62E0241D10061FE50 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = NXT93S55FY;
-				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = oliverio23.BuenMouseTests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BuenMouse.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BuenMouse";
-			};
-			name = Release;
-		};
-		B06242F82E0241D10061FE50 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = NXT93S55FY;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = oliverio23.BuenMouseUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = BuenMouse;
-			};
-			name = Debug;
-		};
-		B06242F92E0241D10061FE50 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = NXT93S55FY;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = oliverio23.BuenMouseUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 5.0;
-				TEST_TARGET_NAME = BuenMouse;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -549,24 +337,6 @@
 			buildConfigurations = (
 				B06242F22E0241D10061FE50 /* Debug */,
 				B06242F32E0241D10061FE50 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		B06242F42E0241D10061FE50 /* Build configuration list for PBXNativeTarget "BuenMouseTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				B06242F52E0241D10061FE50 /* Debug */,
-				B06242F62E0241D10061FE50 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		B06242F72E0241D10061FE50 /* Build configuration list for PBXNativeTarget "BuenMouseUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				B06242F82E0241D10061FE50 /* Debug */,
-				B06242F92E0241D10061FE50 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

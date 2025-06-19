@@ -1,8 +1,7 @@
-//
-//  ContentView_Previews.swift
-//  BuenMouse
-//
-//  Created by Steven Coaila Zaa on 18/06/25.
-//
+import SwiftUI
 
-import Foundation
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView(settings: MockSettings())
+    }
+}

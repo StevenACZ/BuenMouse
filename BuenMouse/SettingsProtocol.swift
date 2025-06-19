@@ -1,8 +1,12 @@
-//
-//  SettingsProtocol.swift
-//  BuenMouse
-//
-//  Created by Steven Coaila Zaa on 18/06/25.
-//
-
 import Foundation
+import SwiftUI
+
+protocol SettingsProtocol: ObservableObject {
+    var isMonitoringActive: Bool { get set }
+    var launchAtLogin: Bool { get set }
+    var startInMenubar: Bool { get set }
+    var invertDragDirection: Bool { get set }
+    var dragThreshold: Double { get set }
+    
+    func moveToMenuBar()
+}

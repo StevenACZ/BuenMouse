@@ -1,96 +1,72 @@
-// Archivo: ContentView.swift
-// VERSIÓN FINAL CON RANGO DE SLIDER MÁXIMO
-
 import SwiftUI
 
-struct ContentView: View {
-    @EnvironmentObject var appDelegate: AppDelegate
+// La vista espera un objeto que cumpla con SettingsProtocol
+struct ContentView<Settings: SettingsProtocol>: View {
+    @ObservedObject var settings: Settings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             
-            // --- Cabecera ---
-            HStack {
+            // Cabecera
+            HStack(alignment: .center, spacing: 12) {
                 Image(systemName: "cursorarrow.and.square.on.square.dashed")
-                    .font(.largeTitle)
+                    .font(.system(size: 36))
                     .foregroundColor(.accentColor)
-                VStack(alignment: .leading) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("BuenMouse")
-                        .font(.title)
+                        .font(.title2)
                         .fontWeight(.bold)
                     Text("Tu asistente de productividad.")
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
             }
-            
-            // --- Descripción ---
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Funciones Activas:")
-                    .font(.headline)
-                Label("Clic Central: Abrir Mission Control", systemImage: "arrow.up.and.down.and.arrow.left.and.right")
-                Label("Arrastrar con Clic Central: Cambiar de Espacio", systemImage: "rectangle.split.2x1")
-            }
-            .padding(.bottom, 10)
-            
+
             Divider()
-            
-            // --- Controles ---
-            VStack(alignment: .leading, spacing: 15) {
-                Text("Ajustes:")
+
+            // Ajustes
+            VStack(alignment: .leading, spacing: 20) {
+                Label("Ajustes Generales", systemImage: "gear")
                     .font(.headline)
                 
-                Toggle(isOn: $appDelegate.isMonitoringActive) {
-                    Text("Activar monitoreo de gestos")
-                }
-                .toggleStyle(.switch)
-                
-                Toggle(isOn: $appDelegate.launchAtLogin) {
-                    Text("Abrir BuenMouse al iniciar sesión")
-                }
-                .toggleStyle(.switch)
-                
-                Toggle(isOn: $appDelegate.invertDragDirection) {
-                    Text("Invertir dirección de arrastre para espacios")
-                }
-                .toggleStyle(.switch)
-                
-                // --- SLIDER DE SENSIBILIDAD CON RANGO MÁXIMO ---
-                VStack(alignment: .leading) {
-                    Text("Sensibilidad de arrastre: \(Int(appDelegate.dragThreshold)) px")
-                        .font(.subheadline)
-                    
-                    // ¡AQUÍ ESTÁ EL CAMBIO FINAL! El rango ahora es de 20 a 1000.
-                    Slider(value: $appDelegate.dragThreshold, in: 20...1000, step: 10) {
-                        Text("Sensibilidad")
-                    } minimumValueLabel: {
-                        Text("Alta")
-                            .font(.caption)
-                    } maximumValueLabel: {
-                        Text("Baja")
-                            .font(.caption)
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("Activar monitoreo de gestos", isOn: $settings.isMonitoringActive)
+                        Toggle("Abrir BuenMouse al iniciar sesión", isOn: $settings.launchAtLogin)
+                        Toggle("Iniciar directamente en la barra de menús", isOn: $settings.startInMenubar)
+                        Toggle("Invertir dirección de arrastre", isOn: $settings.invertDragDirection)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Sensibilidad de arrastre: \(Int(settings.dragThreshold)) px")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                            Slider(value: $settings.dragThreshold, in: 20...1000, step: 10)
+                        }
+                        .padding(.top, 20)
                     }
+                    .padding(.top, 20)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 20)
                 }
-                .padding(.top, 10)
             }
-            
-            Spacer()
-            
-            // --- Botones de Acción ---
+
             HStack {
                 Button {
-                    appDelegate.moveToMenuBar()
+                    settings.moveToMenuBar()
                 } label: {
                     Label("Mover a la Barra de Menús", systemImage: "arrow.up.right.square")
                 }
-                
+
                 Spacer()
-                
+
                 Button("Salir") {
                     NSApplication.shared.terminate(nil)
                 }
+                .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(30)
-        .frame(width: 450, height: 480)
+        .padding(.vertical, 32)
+        .padding(.horizontal, 28)
+        .frame(width: 400, height: 440)
     }
 }

@@ -1,16 +1,19 @@
-// Archivo: BuenMouseApp.swift
-// VERSIÓN COMPLETA CON VENTANA PRINCIPAL
-
 import SwiftUI
 
 @main
 struct BuenMouseApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @State private var mainWindow: NSWindow?
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(appDelegate)
+            ContentView(settings: appDelegate)
+                .background(WindowAccessor(window: $mainWindow))
+                .onChange(of: mainWindow) {
+                    if let win = mainWindow {
+                        appDelegate.window = win
+                    }
+                }
         }
     }
 }

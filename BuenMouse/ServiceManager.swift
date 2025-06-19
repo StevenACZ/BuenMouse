@@ -1,6 +1,3 @@
-// Archivo: ServiceManager.swift
-// VERSIÓN COMPLETA Y CORREGIDA
-
 import Foundation
 import ServiceManagement
 
@@ -13,7 +10,7 @@ enum ServiceManager {
             print("Error al registrar el servicio de inicio: \(error.localizedDescription)")
         }
     }
-    
+
     static func unregister() {
         do {
             try SMAppService.mainApp.unregister()
