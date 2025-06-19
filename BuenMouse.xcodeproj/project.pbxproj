@@ -11,7 +11,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		B06242FF2E0243680061FE50 /* Exceptions for "BuenMouse" folder in "BuenMouse" target */ = {
+		B0FF76AC2E04CB480058666B /* Exceptions for "Resources" folder in "BuenMouse" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -21,12 +21,27 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		B06242D12E0241D00061FE50 /* BuenMouse */ = {
+		B0FF76972E04C90D0058666B /* App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = App;
+			sourceTree = "<group>";
+		};
+		B0FF76992E04C9180058666B /* UI */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = UI;
+			sourceTree = "<group>";
+		};
+		B0FF769D2E04C94C0058666B /* Logic */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Logic;
+			sourceTree = "<group>";
+		};
+		B0FF76AA2E04CB480058666B /* Resources */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				B06242FF2E0243680061FE50 /* Exceptions for "BuenMouse" folder in "BuenMouse" target */,
+				B0FF76AC2E04CB480058666B /* Exceptions for "Resources" folder in "BuenMouse" target */,
 			);
-			path = BuenMouse;
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -45,7 +60,10 @@
 		B06242C62E0241D00061FE50 = {
 			isa = PBXGroup;
 			children = (
-				B06242D12E0241D00061FE50 /* BuenMouse */,
+				B0FF76AA2E04CB480058666B /* Resources */,
+				B0FF769D2E04C94C0058666B /* Logic */,
+				B0FF76992E04C9180058666B /* UI */,
+				B0FF76972E04C90D0058666B /* App */,
 				B06242D02E0241D00061FE50 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -74,7 +92,10 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				B06242D12E0241D00061FE50 /* BuenMouse */,
+				B0FF76972E04C90D0058666B /* App */,
+				B0FF76992E04C9180058666B /* UI */,
+				B0FF769D2E04C94C0058666B /* Logic */,
+				B0FF76AA2E04CB480058666B /* Resources */,
 			);
 			name = BuenMouse;
 			packageProductDependencies = (
