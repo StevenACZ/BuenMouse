@@ -25,6 +25,14 @@ enum SystemActionRunner {
         sendKeyCombo(keyCode: 27, flags: [.maskCommand]) // Cmd -
     }
 
+    static func goBack() {
+        simulateKeyPress(keyCode: 123, flags: .maskCommand) // ⌘ + ←
+    }
+
+    static func goForward() {
+        simulateKeyPress(keyCode: 124, flags: .maskCommand) // ⌘ + →
+    }
+
     private static func sendKeyCombo(keyCode: CGKeyCode, flags: CGEventFlags) {
         let src = CGEventSource(stateID: .combinedSessionState)
         let down = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: true)
@@ -36,7 +44,19 @@ enum SystemActionRunner {
         up?.post(tap: .cghidEventTap)
     }
 
-    
+    private static func simulateKeyPress(keyCode: CGKeyCode, flags: CGEventFlags = []) {
+        guard let src = CGEventSource(stateID: .hidSystemState) else { return }
+
+        let keyDown = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: true)
+        keyDown?.flags = flags
+
+        let keyUp = CGEvent(keyboardEventSource: src, virtualKey: keyCode, keyDown: false)
+        keyUp?.flags = flags
+
+        keyDown?.post(tap: .cghidEventTap)
+        keyUp?.post(tap: .cghidEventTap)
+    }
+
     private static func runAppleScript(source: String) {
         DispatchQueue.global(qos: .userInitiated).async {
             if let script = NSAppleScript(source: source) {

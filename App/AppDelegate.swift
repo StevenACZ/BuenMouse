@@ -11,6 +11,7 @@ private func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: 
 
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, SettingsProtocol {
 
+    // MARK: - Public Settings
     @Published var isMonitoringActive = false {
         didSet { isMonitoringActive ? startMonitoring() : stopMonitoring() }
     }
@@ -22,9 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     @Published var startInMenubar = UserDefaults.standard.bool(forKey: "startInMenubar") {
         didSet {
             UserDefaults.standard.set(startInMenubar, forKey: "startInMenubar")
-            if startInMenubar {
-                moveToMenuBar()
-            }
+            if startInMenubar { moveToMenuBar() }
         }
     }
 
@@ -65,6 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         }
     }
 
+    // MARK: - Private State
     private enum GestureState {
         case idle
         case tracking(startLocation: CGPoint)
@@ -73,13 +73,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     }
 
     private var currentState: GestureState = .idle
+    private var didMoveDuringScroll = false
     private var eventTap: CFMachPort?
     private var cancellables = Set<AnyCancellable>()
+
     var window: NSWindow?
     var statusItem: NSStatusItem?
-
     private var scrollAccumulator: Double = 0.0
 
+    // MARK: - App Lifecycle
     func applicationDidFinishLaunching(_ note: Notification) {
         requestPermissions()
 
@@ -110,7 +112,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         if !AXIsProcessTrusted() {
             let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as NSString: true]
             _ = AXIsProcessTrustedWithOptions(opts)
-            // Se eliminó el alerta adicional ya que el sistema ya muestra el prompt por defecto
         }
     }
 
@@ -161,7 +162,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
 
     private func sendScroll(dx: CGFloat, dy: CGFloat) {
         guard let src = CGEventSource(stateID: .hidSystemState) else { return }
-
         let scrollEvent = CGEvent(
             scrollWheelEvent2Source: src,
             units: .pixel,
@@ -170,11 +170,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
             wheel2: Int32(dx),
             wheel3: 0
         )
-
         scrollEvent?.post(tap: .cghidEventTap)
     }
 
+    // MARK: - Event Handling
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
+        let mouseLocation = event.location
+        let specialButtonBack = 3
+        let specialButtonForward = 4
+
         if type == .scrollWheel {
             let scrollPhase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
             let momentumPhase = event.getIntegerValueField(.scrollWheelEventMomentumPhase)
@@ -184,8 +189,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
 
             if invertScroll && !isFromTrackpad {
                 let y = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
-                event.setDoubleValueField(.scrollWheelEventDeltaAxis1, value: -y)
                 let x = event.getDoubleValueField(.scrollWheelEventDeltaAxis2)
+                event.setDoubleValueField(.scrollWheelEventDeltaAxis1, value: -y)
                 event.setDoubleValueField(.scrollWheelEventDeltaAxis2, value: -x)
             }
 
@@ -203,16 +208,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
             }
         }
 
-        let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
-        let mouseLocation = event.location
-        let specialButton = 3 // ajusta este número si tu mouse usa otro botón lateral
-
         switch currentState {
         case .idle:
             if type == .otherMouseDown && buttonNumber == 2 {
                 currentState = .tracking(startLocation: mouseLocation)
-            } else if type == .otherMouseDown && buttonNumber == specialButton {
+            } else if type == .otherMouseDown && buttonNumber == specialButtonBack {
                 currentState = .scrollingDrag(startLocation: mouseLocation)
+                didMoveDuringScroll = false
+            } else if type == .otherMouseUp && buttonNumber == specialButtonForward {
+                SystemActionRunner.goForward()
+                return nil
             }
 
         case .tracking(let startLocation):
@@ -241,25 +246,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
             }
 
         case .scrollingDrag(let startLocation):
-            if type == .otherMouseUp && buttonNumber == specialButton {
-                currentState = .idle
-                return nil // Cancelar el evento para que no se interprete como "atrás" o "adelante"
-            } else if type == .mouseMoved || type == .otherMouseDragged {
+            if type == .mouseMoved || type == .otherMouseDragged {
                 let dx = mouseLocation.x - startLocation.x
                 let dy = mouseLocation.y - startLocation.y
-                let scale: CGFloat = 0.7 // sensibilidad reducida
+                let scale: CGFloat = 0.7
+
+                if hypot(dx, dy) > 1.5 {
+                    didMoveDuringScroll = true
+                }
+
                 sendScroll(dx: -dx * scale, dy: -dy * scale)
                 currentState = .scrollingDrag(startLocation: mouseLocation)
+            } else if type == .otherMouseUp && buttonNumber == specialButtonBack {
+                if !didMoveDuringScroll {
+                    SystemActionRunner.goBack()
+                }
+                currentState = .idle
+                didMoveDuringScroll = false
+                return nil
             }
         }
 
         return Unmanaged.passUnretained(event)
     }
 
+    // MARK: - UI
     func moveToMenuBar() {
         window?.close()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         UserDefaults.standard.set(true, forKey: "startInMenubar")
+
         if let button = statusItem?.button {
             button.image = NSImage(systemSymbolName: "cursorarrow.click.badge.clock", accessibilityDescription: "BuenMouse")
             button.action = #selector(showMainWindow)
