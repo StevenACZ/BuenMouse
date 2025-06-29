@@ -69,7 +69,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         case idle
         case tracking(startLocation: CGPoint)
         case dragging(startLocation: CGPoint)
-        case inMissionControl
     }
 
     private var currentState: GestureState = .idle
@@ -121,7 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
 
     private func spaceDidChange() {
         if isMonitoringActive { restartMonitoring() }
-        if case .inMissionControl = currentState { currentState = .idle }
+        currentState = .idle
     }
 
     private func restartMonitoring() {
@@ -225,12 +224,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
                     }
                     currentState = .idle
                 }
-            }
-
-        case .inMissionControl:
-            if type == .otherMouseDown {
-                SystemActionRunner.activateMissionControl()
-                currentState = .idle
             }
         }
 
