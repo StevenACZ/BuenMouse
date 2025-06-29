@@ -55,7 +55,7 @@ struct ContentView<Settings: SettingsProtocol>: View {
                         Text("Drag sensitivity: \(Int(settings.dragThreshold)) px")
                             .font(.footnote)
                             .foregroundColor(.secondary)
-                        Slider(value: $settings.dragThreshold, in: 20...1000, step: 10)
+                        Slider(value: $settings.dragThreshold, in: 0...500, step: 5)
                             .animation(.default, value: settings.dragThreshold)
                     }
                 }
@@ -79,7 +79,7 @@ struct ContentView<Settings: SettingsProtocol>: View {
                         Text("Zoom sensitivity: \(String(format: "%.1f", settings.zoomThreshold))")
                             .font(.footnote)
                             .foregroundColor(.secondary)
-                        Slider(value: $settings.zoomThreshold, in: 0.5...5.0, step: 0.1)
+                        Slider(value: $settings.zoomThreshold, in: 0.1...2.0, step: 0.05)
                             .animation(.default, value: settings.zoomThreshold)
                     }
                 }

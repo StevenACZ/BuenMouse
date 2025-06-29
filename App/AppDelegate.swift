@@ -11,7 +11,6 @@ private func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: 
 
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, SettingsProtocol {
 
-    // MARK: - Public Settings
     @Published var isMonitoringActive = false {
         didSet { isMonitoringActive ? startMonitoring() : stopMonitoring() }
     }
@@ -23,7 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     @Published var startInMenubar = UserDefaults.standard.bool(forKey: "startInMenubar") {
         didSet {
             UserDefaults.standard.set(startInMenubar, forKey: "startInMenubar")
-            if startInMenubar { moveToMenuBar() }
+            if startInMenubar {
+                moveToMenuBar()
+            }
         }
     }
 
@@ -36,7 +37,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         return val == 0 ? 40.0 : val
     }() {
         didSet {
-            if dragThreshold < 5 { dragThreshold = 5 }
+            if dragThreshold < 0 { dragThreshold = 0 }
+            if dragThreshold > 500 { dragThreshold = 500 }
             UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold")
         }
     }
@@ -59,11 +61,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         return val == 0 ? 2.0 : val
     }() {
         didSet {
-            if zoomThreshold < 0.5 { zoomThreshold = 0.5 }
+            if zoomThreshold < 0.1 { zoomThreshold = 0.1 }
+            if zoomThreshold > 2.0 { zoomThreshold = 2.0 }
             UserDefaults.standard.set(zoomThreshold, forKey: "zoomThreshold")
         }
     }
-
     // MARK: - Private State
     private enum GestureState {
         case idle
