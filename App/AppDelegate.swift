@@ -69,6 +69,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         case idle
         case tracking(startLocation: CGPoint)
         case dragging(startLocation: CGPoint)
+        case scrollingDrag(startLocation: CGPoint)
     }
 
     private var currentState: GestureState = .idle
@@ -109,12 +110,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         if !AXIsProcessTrusted() {
             let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as NSString: true]
             _ = AXIsProcessTrustedWithOptions(opts)
-            DispatchQueue.main.async {
-                let alert = NSAlert()
-                alert.messageText = "Accessibility permissions required"
-                alert.informativeText = "Please enable BuenMouse in System Preferences > Security & Privacy > Accessibility."
-                alert.runModal()
-            }
+            // Se eliminó el alerta adicional ya que el sistema ya muestra el prompt por defecto
         }
     }
 
@@ -163,6 +159,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         }
     }
 
+    private func sendScroll(dx: CGFloat, dy: CGFloat) {
+        guard let src = CGEventSource(stateID: .hidSystemState) else { return }
+
+        let scrollEvent = CGEvent(
+            scrollWheelEvent2Source: src,
+            units: .pixel,
+            wheelCount: 2,
+            wheel1: Int32(dy),
+            wheel2: Int32(dx),
+            wheel3: 0
+        )
+
+        scrollEvent?.post(tap: .cghidEventTap)
+    }
+
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .scrollWheel {
             let scrollPhase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
@@ -193,29 +204,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         }
 
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
-        guard buttonNumber == 2 else { return Unmanaged.passUnretained(event) }
+        let mouseLocation = event.location
+        let specialButton = 3 // ajusta este número si tu mouse usa otro botón lateral
 
         switch currentState {
         case .idle:
-            if type == .otherMouseDown {
-                currentState = .tracking(startLocation: event.location)
+            if type == .otherMouseDown && buttonNumber == 2 {
+                currentState = .tracking(startLocation: mouseLocation)
+            } else if type == .otherMouseDown && buttonNumber == specialButton {
+                currentState = .scrollingDrag(startLocation: mouseLocation)
             }
 
         case .tracking(let startLocation):
-            if type == .otherMouseUp {
+            if type == .otherMouseUp && buttonNumber == 2 {
                 SystemActionRunner.activateMissionControl()
                 currentState = .idle
             } else if type == .mouseMoved || type == .otherMouseDragged {
-                if hypot(event.location.x - startLocation.x, event.location.y - startLocation.y) > 8.0 {
+                if hypot(mouseLocation.x - startLocation.x, mouseLocation.y - startLocation.y) > 8.0 {
                     currentState = .dragging(startLocation: startLocation)
                 }
             }
 
         case .dragging(let startLocation):
-            if type == .otherMouseUp {
+            if type == .otherMouseUp && buttonNumber == 2 {
                 currentState = .idle
             } else if type == .mouseMoved || type == .otherMouseDragged {
-                let deltaX = event.location.x - startLocation.x
+                let deltaX = mouseLocation.x - startLocation.x
                 if abs(deltaX) > CGFloat(dragThreshold) {
                     if deltaX > 0 {
                         invertDragDirection ? SystemActionRunner.moveToPreviousSpace() : SystemActionRunner.moveToNextSpace()
@@ -224,6 +238,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
                     }
                     currentState = .idle
                 }
+            }
+
+        case .scrollingDrag(let startLocation):
+            if type == .otherMouseUp && buttonNumber == specialButton {
+                currentState = .idle
+                return nil // Cancelar el evento para que no se interprete como "atrás" o "adelante"
+            } else if type == .mouseMoved || type == .otherMouseDragged {
+                let dx = mouseLocation.x - startLocation.x
+                let dy = mouseLocation.y - startLocation.y
+                let scale: CGFloat = 0.7 // sensibilidad reducida
+                sendScroll(dx: -dx * scale, dy: -dy * scale)
+                currentState = .scrollingDrag(startLocation: mouseLocation)
             }
         }
 
