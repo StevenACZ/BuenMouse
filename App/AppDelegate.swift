@@ -1,3 +1,4 @@
+// AppDelegate.swift
 import Cocoa
 import ApplicationServices
 import ServiceManagement
@@ -34,11 +35,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
 
     @Published var dragThreshold: Double = {
         let val = UserDefaults.standard.double(forKey: "dragThreshold")
-        return val == 0 ? 40.0 : val
+        return max(0, min(500, val == 0 ? 40.0 : val))
     }() {
         didSet {
-            if dragThreshold < 0 { dragThreshold = 0 }
-            if dragThreshold > 500 { dragThreshold = 500 }
             UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold")
         }
     }
@@ -56,17 +55,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         }
     }
 
-    @Published var zoomThreshold: Double = {
-        let val = UserDefaults.standard.double(forKey: "zoomThreshold")
-        return val == 0 ? 2.0 : val
-    }() {
-        didSet {
-            if zoomThreshold < 0.1 { zoomThreshold = 0.1 }
-            if zoomThreshold > 2.0 { zoomThreshold = 2.0 }
-            UserDefaults.standard.set(zoomThreshold, forKey: "zoomThreshold")
-        }
-    }
-    // MARK: - Private State
     private enum GestureState {
         case idle
         case tracking(startLocation: CGPoint)
@@ -83,7 +71,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     var statusItem: NSStatusItem?
     private var scrollAccumulator: Double = 0.0
 
-    // MARK: - App Lifecycle
     func applicationDidFinishLaunching(_ note: Notification) {
         requestPermissions()
 
@@ -175,7 +162,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         scrollEvent?.post(tap: .cghidEventTap)
     }
 
-    // MARK: - Event Handling
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
         let mouseLocation = event.location
@@ -200,10 +186,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
                 let deltaY = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
                 scrollAccumulator += deltaY
 
-                if scrollAccumulator >= zoomThreshold {
+                if scrollAccumulator >= 1.0 {
                     SystemActionRunner.zoomIn()
                     scrollAccumulator = 0.0
-                } else if scrollAccumulator <= -zoomThreshold {
+                } else if scrollAccumulator <= -1.0 {
                     SystemActionRunner.zoomOut()
                     scrollAccumulator = 0.0
                 }
@@ -272,7 +258,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         return Unmanaged.passUnretained(event)
     }
 
-    // MARK: - UI
     func moveToMenuBar() {
         window?.close()
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)

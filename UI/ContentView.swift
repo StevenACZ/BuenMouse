@@ -74,14 +74,6 @@ struct ContentView<Settings: SettingsProtocol>: View {
 
                     Toggle("Invert global scroll", isOn: $settings.invertScroll)
                         .animation(.default, value: settings.invertScroll)
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Zoom sensitivity: \(String(format: "%.1f", settings.zoomThreshold))")
-                            .font(.footnote)
-                            .foregroundColor(.secondary)
-                        Slider(value: $settings.zoomThreshold, in: 0.1...2.0, step: 0.05)
-                            .animation(.default, value: settings.zoomThreshold)
-                    }
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
