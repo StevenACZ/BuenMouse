@@ -166,10 +166,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
 
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         if type == .scrollWheel {
+            let scrollPhase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
+            let momentumPhase = event.getIntegerValueField(.scrollWheelEventMomentumPhase)
+            let isFromTrackpad = scrollPhase != 0 || momentumPhase != 0
             let flags = event.flags
             let isControlPressed = flags.contains(.maskControl)
 
-            if invertScroll {
+            if invertScroll && !isFromTrackpad {
                 let y = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
                 event.setDoubleValueField(.scrollWheelEventDeltaAxis1, value: -y)
                 let x = event.getDoubleValueField(.scrollWheelEventDeltaAxis2)
