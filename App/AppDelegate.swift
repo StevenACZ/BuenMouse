@@ -167,7 +167,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
         let mouseLocation = event.location
         let specialButtonBack = 3
-        let specialButtonForward = 4
 
         if type == .scrollWheel {
             let scrollPhase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
