@@ -23,9 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     @Published var startInMenubar = UserDefaults.standard.bool(forKey: "startInMenubar") {
         didSet {
             UserDefaults.standard.set(startInMenubar, forKey: "startInMenubar")
-            if startInMenubar {
-                moveToMenuBar()
-            }
+            if startInMenubar { moveToMenuBar() }
         }
     }
 
@@ -37,9 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         let val = UserDefaults.standard.double(forKey: "dragThreshold")
         return max(0, min(500, val == 0 ? 40.0 : val))
     }() {
-        didSet {
-            UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold")
-        }
+        didSet { UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold") }
     }
 
     @Published var invertScroll = UserDefaults.standard.bool(forKey: "invertScroll") {
@@ -84,8 +80,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
 
         isMonitoringActive = true
 
-        DispatchQueue.main.async { [weak self] in
-            if let window = self?.window ?? NSApplication.shared.windows.first {
+        DispatchQueue.main.async {
+            if let window = self.window ?? NSApplication.shared.windows.first {
                 window.setContentSize(NSSize(width: 400, height: 500))
                 window.center()
                 window.styleMask.remove(.resizable)
@@ -205,7 +201,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
                 didMoveDuringScroll = false
             } else if type == .otherMouseUp && buttonNumber == specialButtonForward {
                 SystemActionRunner.goForward()
-                return nil
+                return Unmanaged.passUnretained(event)
             }
 
         case .tracking(let startLocation):
@@ -251,7 +247,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
                 }
                 currentState = .idle
                 didMoveDuringScroll = false
-                return nil
             }
         }
 
