@@ -10,7 +10,6 @@ private func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: 
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, SettingsProtocol {
-
     @Published var isMonitoringActive = false {
         didSet { isMonitoringActive ? startMonitoring() : stopMonitoring() }
     }
@@ -58,13 +57,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
     }
 
     private var currentState: GestureState = .idle
-    private var didMoveDuringScroll = false
     private var eventTap: CFMachPort?
     private var cancellables = Set<AnyCancellable>()
+    private var scrollAccumulator: Double = 0.0
+
+    private var lastBackClickTimestamp: Double = 0
+    private var cancelNextClickAsDoubleClick = false
+    private var specialClickStartTime: Double = 0
+    private var specialClickMoved = false
 
     var window: NSWindow?
     var statusItem: NSStatusItem?
-    private var scrollAccumulator: Double = 0.0
 
     func applicationDidFinishLaunching(_ note: Notification) {
         requestPermissions()
@@ -78,7 +81,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
             .store(in: &cancellables)
 
         isMonitoringActive = true
-
         configureMainWindow()
     }
 
@@ -199,28 +201,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         case .idle:
             if type == .otherMouseDown && buttonNumber == 2 {
                 currentState = .tracking(startLocation: mouseLocation)
+
             } else if type == .otherMouseDown && buttonNumber == specialButtonBack {
+                specialClickStartTime = Double(event.timestamp) / Double(NSEC_PER_SEC)
+                specialClickMoved = false
                 currentState = .scrollingDrag(startLocation: mouseLocation)
-                didMoveDuringScroll = false
-            } else if type == .otherMouseUp && buttonNumber == specialButtonForward {
-                SystemActionRunner.goForward()
-                return Unmanaged.passUnretained(event)
+                return nil
             }
 
         case .tracking(let startLocation):
-            if type == .otherMouseUp && buttonNumber == 2 {
-                SystemActionRunner.activateMissionControl()
-                currentState = .idle
-            } else if type == .mouseMoved || type == .otherMouseDragged {
-                if hypot(mouseLocation.x - startLocation.x, mouseLocation.y - startLocation.y) > 8.0 {
-                    currentState = .dragging(startLocation: startLocation)
-                }
-            }
-
-        case .dragging(let startLocation):
-            if type == .otherMouseUp && buttonNumber == 2 {
-                currentState = .idle
-            } else if type == .mouseMoved || type == .otherMouseDragged {
+            if type == .mouseMoved || type == .otherMouseDragged {
                 let deltaX = mouseLocation.x - startLocation.x
                 if abs(deltaX) > CGFloat(dragThreshold) {
                     if deltaX > 0 {
@@ -230,6 +220,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
                     }
                     currentState = .idle
                 }
+            } else if type == .otherMouseUp && buttonNumber == 2 {
+                SystemActionRunner.activateMissionControl()
+                currentState = .idle
             }
 
         case .scrollingDrag(let startLocation):
@@ -239,18 +232,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
                 let scale: CGFloat = 0.7
 
                 if hypot(dx, dy) > 1.5 {
-                    didMoveDuringScroll = true
+                    specialClickMoved = true
+                    cancelNextClickAsDoubleClick = true
                 }
 
                 sendScroll(dx: -dx * scale, dy: -dy * scale)
                 currentState = .scrollingDrag(startLocation: mouseLocation)
+
             } else if type == .otherMouseUp && buttonNumber == specialButtonBack {
-                if !didMoveDuringScroll {
-                    SystemActionRunner.goBack()
-                }
+                let now = Double(event.timestamp) / Double(NSEC_PER_SEC)
+                let clickDuration = now - specialClickStartTime
+
                 currentState = .idle
-                didMoveDuringScroll = false
+
+                if specialClickMoved || clickDuration > 0.35 {
+                    cancelNextClickAsDoubleClick = true
+                    return nil
+                }
+
+                if cancelNextClickAsDoubleClick {
+                    cancelNextClickAsDoubleClick = false
+                    return nil
+                }
+
+                if now - lastBackClickTimestamp < 0.4 {
+                    SystemActionRunner.goBack()
+                    lastBackClickTimestamp = 0
+                } else {
+                    lastBackClickTimestamp = now
+                }
+
+                return nil
             }
+
+        default: break
         }
 
         return Unmanaged.passUnretained(event)
