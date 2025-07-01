@@ -1,7 +1,6 @@
 import Cocoa
 import ApplicationServices
-import ServiceManagement
-import Combine
+import SwiftUI
 
 private func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
     guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
@@ -10,92 +9,64 @@ private func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: 
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, SettingsProtocol {
-    @Published var isMonitoringActive = false {
-        didSet { isMonitoringActive ? startMonitoring() : stopMonitoring() }
+    // MARK: - Persisted Settings
+    @Published var isMonitoringActive: Bool = UserDefaults.standard.bool(forKey: "isMonitoringActive") {
+        didSet { UserDefaults.standard.set(isMonitoringActive, forKey: "isMonitoringActive") }
     }
 
-    @Published var launchAtLogin = (SMAppService.mainApp.status == .enabled) {
-        didSet { launchAtLogin ? ServiceManager.register() : ServiceManager.unregister() }
+    @Published var launchAtLogin: Bool = UserDefaults.standard.bool(forKey: "launchAtLogin") {
+        didSet { UserDefaults.standard.set(launchAtLogin, forKey: "launchAtLogin") }
     }
 
-    @Published var startInMenubar = UserDefaults.standard.bool(forKey: "startInMenubar") {
-        didSet {
-            UserDefaults.standard.set(startInMenubar, forKey: "startInMenubar")
-            if startInMenubar { moveToMenuBar() }
-        }
+    @Published var startInMenubar: Bool = UserDefaults.standard.bool(forKey: "startInMenubar") {
+        didSet { UserDefaults.standard.set(startInMenubar, forKey: "startInMenubar") }
     }
 
-    @Published var invertDragDirection = UserDefaults.standard.bool(forKey: "invertDragDirection") {
+    @Published var invertDragDirection: Bool = UserDefaults.standard.bool(forKey: "invertDragDirection") {
         didSet { UserDefaults.standard.set(invertDragDirection, forKey: "invertDragDirection") }
     }
 
     @Published var dragThreshold: Double = {
-        let val = UserDefaults.standard.double(forKey: "dragThreshold")
-        return max(0, min(500, val == 0 ? 40.0 : val))
+        let value = UserDefaults.standard.double(forKey: "dragThreshold")
+        return value == 0 ? 40.0 : value
     }() {
         didSet { UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold") }
     }
 
-    @Published var invertScroll = UserDefaults.standard.bool(forKey: "invertScroll") {
-        didSet {
-            UserDefaults.standard.set(invertScroll, forKey: "invertScroll")
-            restartMonitoring()
-        }
+    @Published var invertScroll: Bool = UserDefaults.standard.bool(forKey: "invertScroll") {
+        didSet { UserDefaults.standard.set(invertScroll, forKey: "invertScroll") }
     }
 
-    @Published var enableScrollZoom = UserDefaults.standard.bool(forKey: "enableScrollZoom") {
-        didSet {
-            UserDefaults.standard.set(enableScrollZoom, forKey: "enableScrollZoom")
-        }
+    @Published var enableScrollZoom: Bool = UserDefaults.standard.bool(forKey: "enableScrollZoom") {
+        didSet { UserDefaults.standard.set(enableScrollZoom, forKey: "enableScrollZoom") }
     }
 
+    func moveToMenuBar() {}
+
+    var window: NSWindow?
+
+    // MARK: - Internal state
     private enum GestureState {
         case idle
         case tracking(startLocation: CGPoint)
-        case dragging(startLocation: CGPoint)
         case scrollingDrag(startLocation: CGPoint)
     }
 
     private var currentState: GestureState = .idle
     private var eventTap: CFMachPort?
-    private var cancellables = Set<AnyCancellable>()
     private var scrollAccumulator: Double = 0.0
+    private var isControlClickScrolling = false
+    private var lastBackEventTime: TimeInterval = 0
+    private var lastForwardEventTime: TimeInterval = 0
+    private var lastControlClickTime: TimeInterval = 0
 
-    private var lastBackClickTimestamp: Double = 0
-    private var cancelNextClickAsDoubleClick = false
-    private var specialClickStartTime: Double = 0
-    private var specialClickMoved = false
-
-    var window: NSWindow?
-    var statusItem: NSStatusItem?
-
-    func applicationDidFinishLaunching(_ note: Notification) {
+    func applicationDidFinishLaunching(_ notification: Notification) {
         requestPermissions()
-
-        if UserDefaults.standard.bool(forKey: "startInMenubar") {
-            moveToMenuBar()
-        }
-
-        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.activeSpaceDidChangeNotification)
-            .sink { [weak self] _ in self?.spaceDidChange() }
-            .store(in: &cancellables)
-
-        isMonitoringActive = true
-        configureMainWindow()
+        startMonitoring()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         stopMonitoring()
-    }
-
-    private func configureMainWindow() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            if let window = self.window ?? NSApplication.shared.windows.first {
-                window.setContentSize(NSSize(width: 400, height: 500))
-                window.center()
-                window.styleMask.remove(.resizable)
-            }
-        }
     }
 
     private func requestPermissions() {
@@ -103,16 +74,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
             let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as NSString: true]
             _ = AXIsProcessTrustedWithOptions(opts)
         }
-    }
-
-    private func spaceDidChange() {
-        if isMonitoringActive { restartMonitoring() }
-        currentState = .idle
-    }
-
-    private func restartMonitoring() {
-        stopMonitoring()
-        startMonitoring()
     }
 
     private func startMonitoring() {
@@ -123,6 +84,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
             (1 << CGEventType.otherMouseUp.rawValue) |
             (1 << CGEventType.mouseMoved.rawValue) |
             (1 << CGEventType.otherMouseDragged.rawValue) |
+            (1 << CGEventType.leftMouseDown.rawValue) |
+            (1 << CGEventType.leftMouseUp.rawValue) |
+            (1 << CGEventType.leftMouseDragged.rawValue) |
             (1 << CGEventType.scrollWheel.rawValue)
 
         eventTap = CGEvent.tapCreate(
@@ -167,10 +131,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
         let flags = event.flags
         let isControlPressed = flags.contains(.maskControl)
+        let mouseLocation = event.location
+        let now = CFAbsoluteTimeGetCurrent()
+
         let specialButtonBack = 3
         let specialButtonForward = 4
 
-        // ⛔️ CANCELA eventos ⌘← y ⌘→ nativos del sistema
         if type == .keyDown || type == .flagsChanged {
             if flags.contains(.maskCommand) {
                 let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
@@ -180,7 +146,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
             }
         }
 
-        // ✅ ZOOM con Control + scroll
+        if type == .leftMouseUp || type == .otherMouseUp {
+            isControlClickScrolling = false
+
+            if case .scrollingDrag(_) = currentState {
+                currentState = .idle
+            } else if case .tracking(let startLocation) = currentState, type == .otherMouseUp, buttonNumber == 2 {
+                let dx = abs(mouseLocation.x - startLocation.x)
+                let dy = abs(mouseLocation.y - startLocation.y)
+                if hypot(dx, dy) < 5 {
+                    SystemActionRunner.activateMissionControl()
+                }
+                currentState = .idle
+                return nil
+            } else {
+                currentState = .idle
+            }
+        }
+
+        switch currentState {
+        case .idle:
+            if type == .leftMouseDown && isControlPressed {
+                currentState = .scrollingDrag(startLocation: mouseLocation)
+                isControlClickScrolling = true
+                lastControlClickTime = now
+                return nil
+            }
+
+            if type == .otherMouseDown && buttonNumber == 2 {
+                currentState = .tracking(startLocation: mouseLocation)
+                return nil
+            }
+
+        case .scrollingDrag(let lastLocation):
+            if type == .leftMouseDragged {
+                let dx = mouseLocation.x - lastLocation.x
+                let dy = mouseLocation.y - lastLocation.y
+                let scale: CGFloat = 0.7
+                sendScroll(dx: -dx * scale, dy: -dy * scale)
+                currentState = .scrollingDrag(startLocation: mouseLocation)
+                return nil
+            }
+
+        case .tracking(let startLocation):
+            if type == .otherMouseDragged || type == .mouseMoved {
+                let deltaX = mouseLocation.x - startLocation.x
+                if abs(deltaX) > CGFloat(dragThreshold) {
+                    if deltaX > 0 {
+                        invertDragDirection ? SystemActionRunner.moveToPreviousSpace() : SystemActionRunner.moveToNextSpace()
+                    } else {
+                        invertDragDirection ? SystemActionRunner.moveToNextSpace() : SystemActionRunner.moveToPreviousSpace()
+                    }
+                    currentState = .idle
+                    return nil
+                }
+            }
+        }
+
         if type == .scrollWheel {
             let scrollPhase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
             let momentumPhase = event.getIntegerValueField(.scrollWheelEventMomentumPhase)
@@ -193,7 +215,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
                 event.setDoubleValueField(.scrollWheelEventDeltaAxis2, value: -x)
             }
 
-            if enableScrollZoom && isControlPressed {
+            let timeSinceControlClick = now - lastControlClickTime
+            if enableScrollZoom && isControlPressed && !isControlClickScrolling && timeSinceControlClick > 0.2 {
                 let deltaY = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
                 scrollAccumulator += deltaY
 
@@ -207,47 +230,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
             }
         }
 
-        // 🖱️ Back / Forward solo se activan al hacer clic
         if type == .otherMouseDown {
-            if buttonNumber == specialButtonBack {
-                specialClickStartTime = Double(event.timestamp) / Double(NSEC_PER_SEC)
-            } else if buttonNumber == specialButtonForward {
-                specialClickStartTime = Double(event.timestamp) / Double(NSEC_PER_SEC)
-            }
-        }
-
-        if type == .otherMouseUp {
-            if buttonNumber == specialButtonBack {
+            if buttonNumber == specialButtonBack && now - lastBackEventTime > 0.3 {
+                lastBackEventTime = now
                 SystemActionRunner.goBack()
-                return nil
-            } else if buttonNumber == specialButtonForward {
+            } else if buttonNumber == specialButtonForward && now - lastForwardEventTime > 0.3 {
+                lastForwardEventTime = now
                 SystemActionRunner.goForward()
-                return nil
             }
         }
 
         return Unmanaged.passUnretained(event)
-    }
-
-
-    func moveToMenuBar() {
-        window?.close()
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        UserDefaults.standard.set(true, forKey: "startInMenubar")
-
-        if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "cursorarrow.click.badge.clock", accessibilityDescription: "BuenMouse")
-            button.action = #selector(showMainWindow)
-            button.target = self
-            button.setAccessibilityLabel("BuenMouse icon")
-            button.setAccessibilityHelp("Click to open main window")
-        }
-    }
-
-    @objc func showMainWindow() {
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        statusItem = nil
-        UserDefaults.standard.set(false, forKey: "startInMenubar")
     }
 }
