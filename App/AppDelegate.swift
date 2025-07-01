@@ -1,4 +1,3 @@
-// AppDelegate.swift
 import Cocoa
 import ApplicationServices
 import ServiceManagement
@@ -80,17 +79,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
 
         isMonitoringActive = true
 
-        DispatchQueue.main.async {
+        configureMainWindow()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        stopMonitoring()
+    }
+
+    private func configureMainWindow() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             if let window = self.window ?? NSApplication.shared.windows.first {
                 window.setContentSize(NSSize(width: 400, height: 500))
                 window.center()
                 window.styleMask.remove(.resizable)
             }
         }
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        stopMonitoring()
     }
 
     private func requestPermissions() {
