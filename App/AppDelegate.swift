@@ -165,15 +165,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
 
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
-        let mouseLocation = event.location
+        let flags = event.flags
+        let isControlPressed = flags.contains(.maskControl)
         let specialButtonBack = 3
+        let specialButtonForward = 4
 
+        // ⛔️ CANCELA eventos ⌘← y ⌘→ nativos del sistema
+        if type == .keyDown || type == .flagsChanged {
+            if flags.contains(.maskCommand) {
+                let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+                if keyCode == 123 || keyCode == 124 {
+                    return nil
+                }
+            }
+        }
+
+        // ✅ ZOOM con Control + scroll
         if type == .scrollWheel {
             let scrollPhase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
             let momentumPhase = event.getIntegerValueField(.scrollWheelEventMomentumPhase)
             let isFromTrackpad = scrollPhase != 0 || momentumPhase != 0
-            let flags = event.flags
-            let isControlPressed = flags.contains(.maskControl)
 
             if invertScroll && !isFromTrackpad {
                 let y = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
@@ -196,79 +207,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject, Sett
             }
         }
 
-        switch currentState {
-        case .idle:
-            if type == .otherMouseDown && buttonNumber == 2 {
-                currentState = .tracking(startLocation: mouseLocation)
-
-            } else if type == .otherMouseDown && buttonNumber == specialButtonBack {
+        // 🖱️ Back / Forward solo se activan al hacer clic
+        if type == .otherMouseDown {
+            if buttonNumber == specialButtonBack {
                 specialClickStartTime = Double(event.timestamp) / Double(NSEC_PER_SEC)
-                specialClickMoved = false
-                currentState = .scrollingDrag(startLocation: mouseLocation)
+            } else if buttonNumber == specialButtonForward {
+                specialClickStartTime = Double(event.timestamp) / Double(NSEC_PER_SEC)
+            }
+        }
+
+        if type == .otherMouseUp {
+            if buttonNumber == specialButtonBack {
+                SystemActionRunner.goBack()
+                return nil
+            } else if buttonNumber == specialButtonForward {
+                SystemActionRunner.goForward()
                 return nil
             }
-
-        case .tracking(let startLocation):
-            if type == .mouseMoved || type == .otherMouseDragged {
-                let deltaX = mouseLocation.x - startLocation.x
-                if abs(deltaX) > CGFloat(dragThreshold) {
-                    if deltaX > 0 {
-                        invertDragDirection ? SystemActionRunner.moveToPreviousSpace() : SystemActionRunner.moveToNextSpace()
-                    } else {
-                        invertDragDirection ? SystemActionRunner.moveToNextSpace() : SystemActionRunner.moveToPreviousSpace()
-                    }
-                    currentState = .idle
-                }
-            } else if type == .otherMouseUp && buttonNumber == 2 {
-                SystemActionRunner.activateMissionControl()
-                currentState = .idle
-            }
-
-        case .scrollingDrag(let startLocation):
-            if type == .mouseMoved || type == .otherMouseDragged {
-                let dx = mouseLocation.x - startLocation.x
-                let dy = mouseLocation.y - startLocation.y
-                let scale: CGFloat = 0.7
-
-                if hypot(dx, dy) > 1.5 {
-                    specialClickMoved = true
-                    cancelNextClickAsDoubleClick = true
-                }
-
-                sendScroll(dx: -dx * scale, dy: -dy * scale)
-                currentState = .scrollingDrag(startLocation: mouseLocation)
-
-            } else if type == .otherMouseUp && buttonNumber == specialButtonBack {
-                let now = Double(event.timestamp) / Double(NSEC_PER_SEC)
-                let clickDuration = now - specialClickStartTime
-
-                currentState = .idle
-
-                if specialClickMoved || clickDuration > 0.35 {
-                    cancelNextClickAsDoubleClick = true
-                    return nil
-                }
-
-                if cancelNextClickAsDoubleClick {
-                    cancelNextClickAsDoubleClick = false
-                    return nil
-                }
-
-                if now - lastBackClickTimestamp < 0.4 {
-                    SystemActionRunner.goBack()
-                    lastBackClickTimestamp = 0
-                } else {
-                    lastBackClickTimestamp = now
-                }
-
-                return nil
-            }
-
-        default: break
         }
 
         return Unmanaged.passUnretained(event)
     }
+
 
     func moveToMenuBar() {
         window?.close()
