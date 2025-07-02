@@ -2,6 +2,9 @@ import Foundation
 import SwiftUI
 
 final class SettingsManager: ObservableObject, SettingsProtocol {
+    // MARK: - Referencia al AppDelegate
+    weak var appDelegate: AppDelegate?
+
     // MARK: - Persisted Settings
     @Published var isMonitoringActive: Bool = UserDefaults.standard.bool(forKey: "isMonitoringActive") {
         didSet { UserDefaults.standard.set(isMonitoringActive, forKey: "isMonitoringActive") }
@@ -34,5 +37,8 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
         didSet { UserDefaults.standard.set(enableScrollZoom, forKey: "enableScrollZoom") }
     }
     
-    func moveToMenuBar() {}
+    func moveToMenuBar() {
+        print("SettingsManager.moveToMenuBar called")
+        appDelegate?.moveToMenuBar()
+    }
 } 
