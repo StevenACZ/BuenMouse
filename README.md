@@ -1,59 +1,101 @@
-# BuenMouse 🖱️✨
+# BuenMouse 🖱️
 
-![BuenMouse Icon](https://github.com/StevenACZ/BuenMouse/blob/main/BuenMouse/Assets.xcassets/AppIcon.appiconset/BuenMouse%201024.png?raw=true)
+Una aplicación de productividad para macOS que mejora la experiencia del mouse con gestos personalizables y funcionalidades avanzadas.
 
-**BuenMouse** es una utilidad ligera y potente para macOS diseñada para mejorar tu productividad y flujo de trabajo, devolviéndote el control sobre los gestos de tu ratón. Creado como una solución personal para reemplazar herramientas más pesadas, BuenMouse se enfoca en hacer una cosa y hacerla excepcionalmente bien.
+## ✨ Características
 
-## ✨ Características Principales
+- **Control + Click para Scroll**: Usa Control + Click y arrastra para hacer scroll
+- **Gestos de Trackpad**: Navegación entre espacios de trabajo con gestos
+- **Botones Especiales**: Botones back/forward del mouse para navegación
+- **Scroll Invertido**: Opción para invertir la dirección del scroll
+- **Zoom con Scroll**: Zoom in/out con Control + Scroll
+- **Configuraciones Persistentes**: Todas las configuraciones se guardan automáticamente
 
--   **Gestos del Clic Central Inteligentes:**
-    -   **Clic Rápido:** Abre **Mission Control** al instante para tener una vista general de todas tus ventanas.
-    -   **Arrastre con Clic Central:** Cambia entre tus Espacios/Escritorios deslizando el ratón hacia la izquierda o la derecha mientras mantienes presionado el botón central.
--   **Totalmente Personalizable:**
-    -   **Sensibilidad de Arrastre:** Ajusta con un slider la distancia que necesitas mover el ratón para activar el cambio de espacio. ¡Desde un movimiento sutil hasta un gesto largo y deliberado!
-    -   **Invertir Dirección:** ¿Prefieres que el movimiento sea "natural" o invertido? Puedes cambiarlo con un solo clic.
--   **Ligero y Eficiente:** Sin funciones innecesarias. BuenMouse está diseñado para consumir mínimos recursos del sistema y ejecutarse discretamente en segundo plano.
--   **Control Total:** Gestiona la aplicación desde una ventana de ajustes simple o muévela a la barra de menús para un acceso rápido y sin distracciones.
--   **Abrir al Iniciar Sesión:** Configura BuenMouse para que se inicie automáticamente con tu Mac y esté siempre listo para ti.
+## 🏗️ Estructura del Proyecto
 
-## 🚀 Instalación
+```
+BuenMouse/
+├── AppDelegate.swift
+├── BuenMouseApp.swift
+├── ServiceManager.swift
+├── WindowAccessor.swift
+├── Core/
+│   ├── EventHandling/
+│   │   ├── EventMonitor.swift
+│   │   ├── GestureHandler.swift
+│   │   └── ScrollHandler.swift
+│   ├── Settings/
+│   │   ├── SettingsManager.swift
+│   │   └── SettingsProtocol.swift
+│   └── SystemActions/
+│       └── SystemActionRunner.swift
+├── Views/
+│   └── ContentView.swift
+├── Resources/
+│   ├── Assets.xcassets
+│   ├── BuenMouse.entitlements
+│   └── Info.plist
+└── README.md
+```
 
-Actualmente, la forma de instalar BuenMouse es compilándolo directamente desde el código fuente usando Xcode.
+## 🔧 Configuración
 
-1.  **Clona el repositorio:**
-    ```bash
-    git clone https://github.com/StevenACZ/BuenMouse.git
-    ```
-2.  Abre el archivo `BuenMouse.xcodeproj` en Xcode.
-3.  Selecciona tu equipo de desarrollador personal en la pestaña `Signing & Capabilities`.
-4.  Compila y ejecuta la aplicación (▶️).
-5.  Una vez compilada, puedes archivarla (`Product -> Archive`) y exportarla como una aplicación (`.app`) para moverla a tu carpeta de Aplicaciones.
+### Requisitos
+- macOS 13.0 o superior
+- Permisos de accesibilidad habilitados
 
-**Nota sobre los Permisos:**
-La primera vez que ejecutes BuenMouse, macOS te pedirá que concedas dos permisos necesarios para su funcionamiento:
--   **Accesibilidad:** Para poder escuchar los clics del ratón.
--   **Automatización (System Events):** Para poder activar Mission Control y cambiar de espacio.
+### Instalación
+1. Clona el repositorio
+2. Abre `BuenMouse.xcodeproj` en Xcode
+3. Compila y ejecuta la aplicación
+4. Habilita los permisos de accesibilidad cuando se solicite
 
-Debes conceder ambos permisos para que la aplicación funcione correctamente.
+## 🎯 Funcionalidades Principales
 
-## 🛠️ Cómo Usar
+### Control + Click para Scroll
+- Mantén presionado Control + Click izquierdo
+- Arrastra el mouse para hacer scroll
+- Perfecto para navegación precisa
 
-1.  **Inicia la aplicación.** Verás la ventana de configuración.
-2.  **Activa el monitoreo:** Asegúrate de que el toggle "Activar monitoreo de gestos" esté encendido.
-3.  **Personaliza tus ajustes:**
-    -   Ajusta la sensibilidad de arrastre a tu gusto.
-    -   Activa la inversión de dirección si lo prefieres.
-    -   Activa "Abrir al iniciar sesión" para máxima comodidad.
-4.  **Mueve la app a la barra de menús:** Haz clic en "Mover a la Barra de Menús" para ocultar la ventana principal y mantener la app corriendo discretamente. Puedes hacer clic en el ícono para volver a abrir la ventana de ajustes cuando quieras.
-5.  **¡Disfruta de tu nuevo flujo de trabajo!**
+### Gestos de Trackpad
+- Click derecho + arrastre horizontal para cambiar espacios
+- Configurable el umbral de sensibilidad
+- Opción para invertir la dirección
 
-## 💡 Motivación
+### Botones Especiales del Mouse
+- Botón 3 (back): Navegación hacia atrás
+- Botón 4 (forward): Navegación hacia adelante
+- Con protección contra doble-click
 
-Este proyecto nació de la necesidad de una herramienta de gestos de ratón simple, fiable y que no fallara. Después de experimentar problemas de estabilidad con otras soluciones, decidí tomar el control y construir una aplicación desde cero que hiciera exactamente lo que necesitaba. BuenMouse es el resultado de un viaje de aprendizaje, depuración y la búsqueda de la herramienta perfecta.
+### Scroll Avanzado
+- Inversión de scroll global
+- Zoom con Control + Scroll
+- Detección automática de trackpad vs mouse
+
+## 🛠️ Desarrollo
+
+### Estructura Modular
+El proyecto está organizado en módulos especializados:
+
+- **Settings**: Gestión de configuraciones persistentes
+- **EventHandling**: Procesamiento de eventos del sistema
+- **SystemActions**: Ejecución de acciones del sistema macOS
+- **Views**: Interfaces de usuario SwiftUI
+
+### Agregar Nuevas Funcionalidades
+
+1. **Nuevas Configuraciones**: Agregar en `Core/Settings/SettingsManager.swift`
+2. **Nuevos Gestos**: Implementar en `Core/EventHandling/GestureHandler.swift`
+3. **Nuevas Acciones**: Agregar en `Core/SystemActions/SystemActionRunner.swift`
+4. **Nuevas Vistas**: Crear en `Views/`
+
+## 📝 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver el archivo LICENSE para más detalles.
 
 ## 🤝 Contribuciones
 
-Aunque este es un proyecto personal, las ideas y sugerencias son siempre bienvenidas. Si tienes alguna idea para una nueva característica o una mejora, no dudes en abrir un "Issue" en GitHub.
+Las contribuciones son bienvenidas. Por favor, abre un issue o pull request para sugerencias y mejoras.
 
 ---
 **Hecho con ❤️ y mucho Swift en Perú.**
