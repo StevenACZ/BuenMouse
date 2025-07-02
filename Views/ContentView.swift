@@ -101,4 +101,4 @@ struct ContentView<Settings: SettingsProtocol>: View {
         .padding(20)
         .frame(width: 420)
     }
-}
+} 

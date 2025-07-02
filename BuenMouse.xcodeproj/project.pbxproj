@@ -6,8 +6,19 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		B0814B5C2E14B64400112727 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0814B582E14B64400112727 /* AppDelegate.swift */; };
+		B0814B5D2E14B64400112727 /* BuenMouseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0814B592E14B64400112727 /* BuenMouseApp.swift */; };
+		B0814B5E2E14B64400112727 /* ServiceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0814B5A2E14B64400112727 /* ServiceManager.swift */; };
+		B0814B5F2E14B64400112727 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0814B5B2E14B64400112727 /* WindowAccessor.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		B06242CF2E0241D00061FE50 /* BuenMouse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BuenMouse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B0814B582E14B64400112727 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B0814B592E14B64400112727 /* BuenMouseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuenMouseApp.swift; sourceTree = "<group>"; };
+		B0814B5A2E14B64400112727 /* ServiceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceManager.swift; sourceTree = "<group>"; };
+		B0814B5B2E14B64400112727 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -21,19 +32,14 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		B0FF76972E04C90D0058666B /* App */ = {
+		B0814B7C2E14B88800112727 /* Core */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = App;
+			path = Core;
 			sourceTree = "<group>";
 		};
-		B0FF76992E04C9180058666B /* UI */ = {
+		B0814B842E14B88C00112727 /* Views */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = UI;
-			sourceTree = "<group>";
-		};
-		B0FF769D2E04C94C0058666B /* Logic */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Logic;
+			path = Views;
 			sourceTree = "<group>";
 		};
 		B0FF76AA2E04CB480058666B /* Resources */ = {
@@ -60,10 +66,13 @@
 		B06242C62E0241D00061FE50 = {
 			isa = PBXGroup;
 			children = (
+				B0814B7C2E14B88800112727 /* Core */,
+				B0814B842E14B88C00112727 /* Views */,
 				B0FF76AA2E04CB480058666B /* Resources */,
-				B0FF769D2E04C94C0058666B /* Logic */,
-				B0FF76992E04C9180058666B /* UI */,
-				B0FF76972E04C90D0058666B /* App */,
+				B0814B582E14B64400112727 /* AppDelegate.swift */,
+				B0814B592E14B64400112727 /* BuenMouseApp.swift */,
+				B0814B5A2E14B64400112727 /* ServiceManager.swift */,
+				B0814B5B2E14B64400112727 /* WindowAccessor.swift */,
 				B06242D02E0241D00061FE50 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -92,9 +101,8 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				B0FF76972E04C90D0058666B /* App */,
-				B0FF76992E04C9180058666B /* UI */,
-				B0FF769D2E04C94C0058666B /* Logic */,
+				B0814B7C2E14B88800112727 /* Core */,
+				B0814B842E14B88C00112727 /* Views */,
 				B0FF76AA2E04CB480058666B /* Resources */,
 			);
 			name = BuenMouse;
@@ -153,6 +161,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B0814B5C2E14B64400112727 /* AppDelegate.swift in Sources */,
+				B0814B5D2E14B64400112727 /* BuenMouseApp.swift in Sources */,
+				B0814B5E2E14B64400112727 /* ServiceManager.swift in Sources */,
+				B0814B5F2E14B64400112727 /* WindowAccessor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

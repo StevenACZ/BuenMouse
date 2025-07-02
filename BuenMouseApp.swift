@@ -7,7 +7,7 @@ struct BuenMouseApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(settings: appDelegate)
+            ContentView(settings: appDelegate.settingsManager)
                 .background(WindowAccessor(window: $mainWindow))
                 .onChange(of: mainWindow) {
                     if let win = mainWindow {

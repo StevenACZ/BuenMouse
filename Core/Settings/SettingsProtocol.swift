@@ -9,5 +9,6 @@ protocol SettingsProtocol: ObservableObject {
     var dragThreshold: Double { get set }
     var invertScroll: Bool { get set }
     var enableScrollZoom: Bool { get set }
+    
     func moveToMenuBar()
-}
+} 
