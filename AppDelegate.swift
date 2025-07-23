@@ -1,5 +1,6 @@
 import Cocoa
 import SwiftUI
+import ServiceManagement
 
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     // MARK: - Components
@@ -17,43 +18,80 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        setupStatusBar()
         setupComponents()
         eventMonitor?.requestPermissions()
-        eventMonitor?.startMonitoring()
+        
+        // Solo iniciar monitoring si está activo
+        if settingsManager.isMonitoringActive {
+            eventMonitor?.startMonitoring()
+        }
+        
+        // Si está configurado para iniciar en menubar, ocultar ventana
+        if settingsManager.startInMenubar {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.window?.orderOut(nil)
+            }
+        }
+        
+        // Configurar launch at login si está habilitado
+        configureLaunchAtLogin()
+        
+        // Configurar apariencia
+        settingsManager.setupAppearanceObserver()
+        settingsManager.updateAppearance()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         eventMonitor?.stopMonitoring()
     }
     
+    private func setupStatusBar() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        if let button = statusItem?.button {
+            button.image = NSImage(systemSymbolName: "cursorarrow", accessibilityDescription: "BuenMouse")
+            button.action = #selector(statusItemClicked)
+            button.target = self
+        }
+    }
+    
     private func setupComponents() {
-        // Initialize handlers
+        // Initialize handlers with optimized settings
         scrollHandler = ScrollHandler(settingsManager: settingsManager)
         gestureHandler = GestureHandler(settingsManager: settingsManager, scrollHandler: scrollHandler!)
         
         // Initialize event monitor
         eventMonitor = EventMonitor(gestureHandler: gestureHandler!, scrollHandler: scrollHandler!)
     }
+    
+    private func configureLaunchAtLogin() {
+        if settingsManager.launchAtLogin {
+            ServiceManager.register()
+        } else {
+            ServiceManager.unregister()
+        }
+    }
 
     func moveToMenuBar() {
-        print("moveToMenuBar called")
-        // Crear el status item si no existe
-        if statusItem == nil {
-            statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-            if let button = statusItem?.button {
-                button.image = NSImage(systemSymbolName: "cursorarrow", accessibilityDescription: "BuenMouse")
-                button.action = #selector(statusItemClicked)
-                button.target = self
-            }
-        }
-        // Ocultar la ventana principal
         window?.orderOut(nil)
     }
 
+    func updateMonitoring(isActive: Bool) {
+        if isActive {
+            eventMonitor?.startMonitoring()
+        } else {
+            eventMonitor?.stopMonitoring()
+        }
+    }
+
     @objc private func statusItemClicked() {
-        print("statusItemClicked called")
-        // Mostrar la ventana principal y traerla al frente
-        window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if let window = window {
+            if window.isVisible {
+                window.orderOut(nil)
+            } else {
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
     }
 }

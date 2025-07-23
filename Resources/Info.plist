@@ -6,5 +6,7 @@
     <string>BuenMouse necesita permiso para escuchar los clics del ratón y poder activar funciones del sistema.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>BuenMouse necesita permiso para controlar otras aplicaciones del sistema, como System Events y Mission Control.</string>
+    <key>LSUIElement</key>
+    <true/>
 </dict>
 </plist>

@@ -3,7 +3,6 @@ import SwiftUI
 struct ContentView<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
     @State private var selectedTab = 0
-    @State private var isAppearing = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -31,13 +30,6 @@ struct ContentView<Settings: SettingsProtocol>: View {
 
         .padding(28)
         .frame(minWidth: 950, idealWidth: 1050, maxWidth: 1250, minHeight: 480, idealHeight: 540, maxHeight: 650)
-        .opacity(isAppearing ? 1 : 0)
-        .scaleEffect(isAppearing ? 1 : 0.95)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.6).delay(0.1)) {
-                isAppearing = true
-            }
-        }
     }
 }
 
@@ -69,6 +61,37 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                                 .foregroundColor(.secondary)
                         }
                         Spacer()
+                        
+                        // Dark mode toggle
+                        VStack(spacing: 8) {
+                            HStack(spacing: 8) {
+                                Button(action: {
+                                    settings.followSystemAppearance = !settings.followSystemAppearance
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: settings.followSystemAppearance ? "checkmark.circle.fill" : "circle")
+                                            .foregroundColor(settings.followSystemAppearance ? .blue : .secondary)
+                                        Text("Auto")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                
+                                Button(action: {
+                                    if !settings.followSystemAppearance {
+                                        settings.isDarkMode = !settings.isDarkMode
+                                    }
+                                }) {
+                                    Image(systemName: settings.isDarkMode ? "moon.fill" : "sun.max.fill")
+                                        .font(.title2)
+                                        .foregroundColor(settings.followSystemAppearance ? .secondary : (settings.isDarkMode ? .indigo : .orange))
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .disabled(settings.followSystemAppearance)
+                            }
+                        }
+                        
                         // Icono decorativo
                         Image(systemName: "gearshape.2.fill")
                             .font(.system(size: 40))
@@ -79,8 +102,6 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                                     endPoint: .bottomTrailing
                                 )
                             )
-                            .rotationEffect(.degrees(hoveredCard != nil ? 360 : 0))
-                            .animation(.easeInOut(duration: 2).repeatForever(autoreverses: false), value: hoveredCard)
                     }
                     .padding(.horizontal, 4)
                     
@@ -138,9 +159,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
             }
         }
         .onHover { isHovering in
-            withAnimation(.easeInOut(duration: 0.3)) {
-                hoveredCard = isHovering ? "general" : nil
-            }
+            hoveredCard = isHovering ? "general" : nil
         }
     }
 
@@ -158,6 +177,8 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                     icon: "arrow.left.and.right.circle",
                     description: "Reverse horizontal drag behavior"
                 )
+                .disabled(!settings.isMonitoringActive)
+                .opacity(settings.isMonitoringActive ? 1.0 : 0.5)
                 
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -176,14 +197,14 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                     
                     Slider(value: $settings.dragThreshold, in: 0...500, step: 5)
                         .tint(.purple)
-                        .animation(.easeInOut(duration: 0.2), value: settings.dragThreshold)
+                        .disabled(!settings.isMonitoringActive)
                 }
             }
         }
+        .disabled(!settings.isMonitoringActive)
+        .opacity(settings.isMonitoringActive ? 1.0 : 0.5)
         .onHover { isHovering in
-            withAnimation(.easeInOut(duration: 0.3)) {
-                hoveredCard = isHovering ? "mouse" : nil
-            }
+            hoveredCard = isHovering ? "mouse" : nil
         }
     }
 
@@ -201,6 +222,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                     icon: "plus.magnifyingglass",
                     description: "Use Control + scroll wheel to zoom"
                 )
+                .disabled(!settings.isMonitoringActive)
                 
                 if settings.enableScrollZoom {
                     HStack(spacing: 8) {
@@ -211,7 +233,6 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                             .foregroundColor(.secondary)
                     }
                     .padding(.leading, 8)
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
                 
                 ModernToggle(
@@ -220,6 +241,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                     icon: "arrow.up.arrow.down.circle",
                     description: "Reverse mouse scroll direction"
                 )
+                .disabled(!settings.isMonitoringActive)
                 
                 if settings.invertScroll {
                     HStack(spacing: 8) {
@@ -230,14 +252,13 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                             .foregroundColor(.secondary)
                     }
                     .padding(.leading, 8)
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
             }
         }
+        .disabled(!settings.isMonitoringActive)
+        .opacity(settings.isMonitoringActive ? 1.0 : 0.5)
         .onHover { isHovering in
-            withAnimation(.easeInOut(duration: 0.3)) {
-                hoveredCard = isHovering ? "scroll" : nil
-            }
+            hoveredCard = isHovering ? "scroll" : nil
         }
     }
     
@@ -301,81 +322,71 @@ struct ShortcutsView<Settings: SettingsProtocol>: View {
                 }
                 .padding(.horizontal, 4)
                 
-                // Shortcuts cards
-                LazyVStack(spacing: 20) {
+                // Shortcuts grid
+                LazyVGrid(columns: [
+                    GridItem(.flexible(), spacing: 16),
+                    GridItem(.flexible(), spacing: 16),
+                    GridItem(.flexible(), spacing: 16)
+                ], spacing: 20) {
                     ShortcutCard(
                         index: 0,
-                        title: "Ctrl (⌃) + Left Click & Drag",
-                        description: "Scrolls the content as if you were using a trackpad with two fingers. Perfect for smooth navigation.",
+                        title: "Ctrl + Click & Drag",
+                        description: "Scrolls content like trackpad two-finger gesture. Perfect for smooth navigation.",
                         icon: "hand.draw",
                         gradientColors: [.blue, .cyan],
                         isSelected: selectedShortcut == 0
                     )
                     .onTapGesture {
-                        withAnimation(.spring()) {
-                            selectedShortcut = selectedShortcut == 0 ? nil : 0
-                        }
-                    }
-                    
-                    if settings.enableScrollZoom {
-                        ShortcutCard(
-                            index: 1,
-                            title: "Ctrl (⌃) + Scroll",
-                            description: "Zoom in/out using your mouse wheel while holding Control. Great for detailed work and presentations.",
-                            icon: "plus.magnifyingglass",
-                            gradientColors: [.purple, .pink],
-                            isSelected: selectedShortcut == 1
-                        )
-                        .onTapGesture {
-                            withAnimation(.spring()) {
-                                selectedShortcut = selectedShortcut == 1 ? nil : 1
-                            }
-                        }
-                        .transition(.asymmetric(
-                            insertion: .scale.combined(with: .opacity),
-                            removal: .scale.combined(with: .opacity)
-                        ))
+                        selectedShortcut = selectedShortcut == 0 ? nil : 0
                     }
                     
                     ShortcutCard(
                         index: 2,
-                        title: "Middle Mouse Button + Drag",
-                        description: "Switches between Spaces/Desktops. Hold the middle button and drag horizontally for seamless workspace switching.",
+                        title: "Middle Mouse + Drag",
+                        description: "Switch between Spaces/Desktops. Drag horizontally for workspace switching.",
                         icon: "rectangle.3.offgrid",
                         gradientColors: [.green, .mint],
                         isSelected: selectedShortcut == 2
                     )
                     .onTapGesture {
-                        withAnimation(.spring()) {
-                            selectedShortcut = selectedShortcut == 2 ? nil : 2
-                        }
+                        selectedShortcut = selectedShortcut == 2 ? nil : 2
                     }
                     
                     ShortcutCard(
                         index: 3,
                         title: "Mouse Button 3 (Back)",
-                        description: "Navigate back in browsers, Finder, and other applications. Quick and intuitive navigation.",
+                        description: "Navigate back in browsers, Finder, and other apps. Quick navigation.",
                         icon: "arrow.left.circle",
                         gradientColors: [.orange, .yellow],
                         isSelected: selectedShortcut == 3
                     )
                     .onTapGesture {
-                        withAnimation(.spring()) {
-                            selectedShortcut = selectedShortcut == 3 ? nil : 3
-                        }
+                        selectedShortcut = selectedShortcut == 3 ? nil : 3
                     }
                     
                     ShortcutCard(
                         index: 4,
                         title: "Mouse Button 4 (Forward)",
-                        description: "Navigate forward in browsers, Finder, and other applications. Complete your navigation workflow.",
+                        description: "Navigate forward in browsers, Finder, and other apps. Complete workflow.",
                         icon: "arrow.right.circle",
                         gradientColors: [.red, .pink],
                         isSelected: selectedShortcut == 4
                     )
                     .onTapGesture {
-                        withAnimation(.spring()) {
-                            selectedShortcut = selectedShortcut == 4 ? nil : 4
+                        selectedShortcut = selectedShortcut == 4 ? nil : 4
+                    }
+                    
+                    if settings.enableScrollZoom {
+                        ShortcutCard(
+                            index: 1,
+                            title: "Ctrl + Scroll",
+                            description: "Zoom in/out with mouse wheel while holding Control. Great for detailed work.",
+                            icon: "plus.magnifyingglass",
+                            gradientColors: [.purple, .pink],
+                            isSelected: selectedShortcut == 1
+                        )
+                        .onTapGesture {
+                            selectedShortcut = selectedShortcut == 1 ? nil : 1
                         }
                     }
                 }
@@ -387,8 +398,6 @@ struct ShortcutsView<Settings: SettingsProtocol>: View {
 
 // --- About Page ---
 struct AboutView: View {
-    @State private var isLogoAnimating = false
-    @State private var showDetails = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 36) {
@@ -409,12 +418,6 @@ struct AboutView: View {
                                 lineWidth: 2
                             )
                     )
-                    .scaleEffect(isLogoAnimating ? 1.05 : 1.0)
-                    .rotationEffect(.degrees(isLogoAnimating ? 2 : 0))
-                    .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isLogoAnimating)
-                    .onAppear {
-                        isLogoAnimating = true
-                    }
                 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("BuenMouse")
@@ -456,8 +459,6 @@ struct AboutView: View {
                 Text("BuenMouse is a lightweight, powerful utility for macOS designed to boost your productivity and give you full control over your mouse gestures. I hope it helps you as much as it helped me!")
                     .font(.title3)
                     .lineSpacing(4)
-                    .opacity(showDetails ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.8).delay(0.3), value: showDetails)
             }
             
             // Features destacadas en grid de 2 columnas
@@ -476,17 +477,10 @@ struct AboutView: View {
                     FeatureRow(icon: "lock.shield.fill", title: "Privacy First", description: "All processing happens locally")
                 }
             }
-            .opacity(showDetails ? 1 : 0)
-            .animation(.easeInOut(duration: 0.8).delay(0.6), value: showDetails)
             
             Spacer()
         }
         .padding(36)
-        .onAppear {
-            withAnimation {
-                showDetails = true
-            }
-        }
     }
 }
 
@@ -540,9 +534,7 @@ struct ModernCard<Content: View>: View {
                     lineWidth: isHovered ? 1 : 0
                 )
         )
-        .scaleEffect(isHovered ? 1.02 : 1.0)
-        .shadow(color: .black.opacity(isHovered ? 0.1 : 0.05), radius: isHovered ? 10 : 5, x: 0, y: isHovered ? 5 : 2)
-        .animation(.easeInOut(duration: 0.3), value: isHovered)
+        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
         .frame(maxWidth: .infinity)
     }
 }
@@ -555,11 +547,10 @@ struct ModernToggle: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Toggle(isOn: $isOn.animation(.spring())) {
+            Toggle(isOn: $isOn) {
                 HStack(spacing: 10) {
                     Image(systemName: icon)
                         .foregroundColor(isOn ? .blue : .secondary)
-                        .animation(.easeInOut(duration: 0.2), value: isOn)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(label)
                             .font(.headline)
@@ -600,8 +591,7 @@ struct ModernActionButton: View {
                 ),
                 in: RoundedRectangle(cornerRadius: 12)
             )
-            .scaleEffect(isPressed ? 0.95 : 1.0)
-            .animation(.easeInOut(duration: 0.1), value: isPressed)
+
         }
         .buttonStyle(PlainButtonStyle())
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
@@ -619,10 +609,10 @@ struct ShortcutCard: View {
     let isSelected: Bool
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.title2)
+                    .font(.title3)
                     .foregroundStyle(
                         LinearGradient(
                             colors: gradientColors,
@@ -630,23 +620,30 @@ struct ShortcutCard: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                Text(title)
-                    .font(.title3.bold())
+                    .frame(width: 20)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.headline)
+                        .lineLimit(2)
+                    
+                    if isSelected {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(4)
+                    }
+                }
+                
                 Spacer()
+                
                 Image(systemName: isSelected ? "chevron.down" : "chevron.right")
+                    .font(.caption)
                     .foregroundColor(.secondary)
-                    .rotationEffect(.degrees(isSelected ? 0 : -90))
-                    .animation(.easeInOut(duration: 0.3), value: isSelected)
-            }
-            
-            if isSelected {
-                Text(description)
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(20)
+        .padding(16)
+        .frame(minHeight: isSelected ? 120 : 80)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
@@ -659,8 +656,6 @@ struct ShortcutCard: View {
                     lineWidth: isSelected ? 1 : 0
                 )
         )
-        .scaleEffect(isSelected ? 1.02 : 1.0)
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: isSelected)
     }
 }
 

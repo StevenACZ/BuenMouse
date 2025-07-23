@@ -63,18 +63,17 @@ final class EventMonitor: NSObject {
     }
     
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // Handle keyboard events (Command + arrow keys)
-        if type == .keyDown || type == .flagsChanged {
-            let flags = event.flags
-            if flags.contains(.maskCommand) {
-                let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-                if keyCode == 123 || keyCode == 124 {
-                    return nil
-                }
-            }
+        // Early return for performance - only process relevant events
+        switch type {
+        case .otherMouseDown, .otherMouseUp, .otherMouseDragged,
+             .leftMouseDown, .leftMouseUp, .leftMouseDragged,
+             .scrollWheel:
+            break
+        default:
+            return Unmanaged.passUnretained(event)
         }
         
-        // Delegate to gesture handler
+        // Delegate to gesture handler first (more common)
         if let gestureHandler = gestureHandler {
             let result = gestureHandler.handleEvent(type: type, event: event)
             if result == .consumed {
