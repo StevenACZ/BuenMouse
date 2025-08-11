@@ -149,17 +149,7 @@ Las contribuciones son bienvenidas. Por favor, abre un issue o pull request para
 
 **Ahora BuenMouse es verdaderamente una app de segundo plano optimizada para productividad sin impacto en el rendimiento del sistema.**
 
-## 🛠️ Desarrollo y Build
-
-### Build Script
-
-```bash
-# Hacer ejecutable el script
-chmod +x build_and_run.sh
-
-# Compilar y ejecutar
-./build_and_run.sh
-```
+## 🛠️ Desarrollo
 
 ### Estructura de Archivos Clave
 
@@ -168,10 +158,7 @@ chmod +x build_and_run.sh
 - `ContentView.swift` - Interfaz principal optimizada
 - `EventMonitor.swift` - Captura de eventos optimizada
 - `Info.plist` - Configuración para ocultar del dock
-- `DEVELOPMENT_README.md` - Guía completa de desarrollo
 
 ### Archivos de Configuración
 
 - `.gitignore` - Exclusiones optimizadas para Xcode/Swift
-- `build_and_run.sh` - Script de compilación automática
-- `DEVELOPMENT_README.md` - Documentación técnica completa

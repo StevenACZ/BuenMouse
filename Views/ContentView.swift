@@ -143,12 +143,32 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                     description: "Activate mouse gesture recognition"
                 )
                 
-                ModernToggle(
-                    isOn: $settings.launchAtLogin,
-                    label: "Launch at login",
-                    icon: "arrow.triangle.2.circlepath",
-                    description: "Start automatically with macOS"
-                )
+                VStack(alignment: .leading, spacing: 8) {
+                    ModernToggle(
+                        isOn: $settings.launchAtLogin,
+                        label: "Launch at login",
+                        icon: "arrow.triangle.2.circlepath",
+                        description: "Start automatically with macOS"
+                    )
+                    
+                    if let error = settings.launchAtLoginError {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.orange)
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.orange)
+                            
+                            Button("Retry") {
+                                settings.updateLaunchAtLogin(settings.launchAtLogin)
+                            }
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                        .padding(.leading, 8)
+                    }
+                }
                 
                 ModernToggle(
                     isOn: $settings.startInMenubar,

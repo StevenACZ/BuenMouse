@@ -19,9 +19,11 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
     @Published var launchAtLogin: Bool = UserDefaults.standard.bool(forKey: "launchAtLogin") {
         didSet { 
             UserDefaults.standard.set(launchAtLogin, forKey: "launchAtLogin")
-            configureLaunchAtLogin()
+            updateLaunchAtLogin(launchAtLogin)
         }
     }
+    
+    @Published var launchAtLoginError: String? = nil
 
     @Published var startInMenubar: Bool = UserDefaults.standard.bool(forKey: "startInMenubar") {
         didSet { UserDefaults.standard.set(startInMenubar, forKey: "startInMenubar") }
@@ -67,12 +69,35 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
         appDelegate?.moveToMenuBar()
     }
     
-    private func configureLaunchAtLogin() {
-        if launchAtLogin {
-            ServiceManager.register()
-        } else {
-            ServiceManager.unregister()
+    func updateLaunchAtLogin(_ enabled: Bool) {
+        let result = enabled ? ServiceManager.register() : ServiceManager.unregister()
+        
+        switch result {
+        case .success:
+            launchAtLoginError = nil
+        case .failure(let error):
+            handleServiceError(error)
         }
+    }
+    
+    func verifyLaunchAtLoginStatus() {
+        let isInSync = ServiceManager.syncWithUserDefaults()
+        
+        if !isInSync {
+            print("⚠️ Estado de launch at login desincronizado, intentando corregir...")
+            updateLaunchAtLogin(launchAtLogin)
+        }
+    }
+    
+    private func handleServiceError(_ error: ServiceError) {
+        DispatchQueue.main.async {
+            self.launchAtLoginError = error.localizedDescription
+            print("❌ Error en launch at login: \(error.localizedDescription)")
+        }
+    }
+    
+    private func configureLaunchAtLogin() {
+        updateLaunchAtLogin(launchAtLogin)
     }
     
     func updateAppearance() {

@@ -34,8 +34,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             }
         }
         
-        // Configurar launch at login si está habilitado
-        configureLaunchAtLogin()
+        // Verificar y sincronizar launch at login
+        settingsManager.verifyLaunchAtLoginStatus()
         
         // Configurar apariencia
         settingsManager.setupAppearanceObserver()
@@ -64,13 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         eventMonitor = EventMonitor(gestureHandler: gestureHandler!, scrollHandler: scrollHandler!)
     }
     
-    private func configureLaunchAtLogin() {
-        if settingsManager.launchAtLogin {
-            ServiceManager.register()
-        } else {
-            ServiceManager.unregister()
-        }
-    }
+
 
     func moveToMenuBar() {
         window?.orderOut(nil)
