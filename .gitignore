@@ -157,3 +157,6 @@ PERSONAL_README.md
 
 # Kiro IDE specific
 .kiro/
+
+# Claude Code
+.claude/
