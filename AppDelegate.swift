@@ -47,6 +47,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         settingsManager.setupAppearanceObserver()
         settingsManager.updateAppearance()
         
+        // Update status bar after settings are ready
+        updateStatusBarIcon()
+        
         // Verificar y sincronizar launch at login
         settingsManager.verifyLaunchAtLoginStatus()
         
@@ -63,9 +66,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private func setupStatusBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "cursorarrow", accessibilityDescription: "BuenMouse")
+            updateStatusBarIcon()
             button.action = #selector(statusItemClicked)
             button.target = self
+            
+            // Add right-click menu
+            let menu = NSMenu()
+            menu.addItem(NSMenuItem(title: "Show Settings", action: #selector(statusItemClicked), keyEquivalent: ""))
+            menu.addItem(NSMenuItem.separator())
+            
+            let toggleItem = NSMenuItem(title: "Toggle Monitoring", action: #selector(toggleMonitoring), keyEquivalent: "")
+            toggleItem.target = self
+            menu.addItem(toggleItem)
+            
+            menu.addItem(NSMenuItem.separator())
+            let quitItem = NSMenuItem(title: "Quit BuenMouse", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+            menu.addItem(quitItem)
+            
+            statusItem?.menu = menu
         }
     }
     
@@ -130,9 +148,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         } else {
             eventMonitor?.stopMonitoring()
         }
+        updateStatusBarIcon()
+    }
+    
+    private func updateStatusBarIcon() {
+        guard let button = statusItem?.button else { return }
+        
+        let iconName: String
+        let tooltip: String
+        
+        if settingsManager.isMonitoringActive {
+            iconName = "cursorarrow"
+            tooltip = "BuenMouse: Active - Click to show settings"
+        } else {
+            iconName = "cursorarrow.slash"
+            tooltip = "BuenMouse: Inactive - Click to show settings"
+        }
+        
+        button.image = NSImage(systemSymbolName: iconName, accessibilityDescription: "BuenMouse")
+        button.toolTip = tooltip
+        
+        // Update menu item text
+        if let menu = statusItem?.menu,
+           let toggleItem = menu.item(withTitle: "Toggle Monitoring") {
+            toggleItem.title = settingsManager.isMonitoringActive ? "Disable Monitoring" : "Enable Monitoring"
+        }
+    }
+    
+    @objc private func toggleMonitoring() {
+        settingsManager.isMonitoringActive.toggle()
+        os_log("Monitoring toggled via status bar: %{public}@", log: .default, type: .info, settingsManager.isMonitoringActive ? "enabled" : "disabled")
     }
 
     @objc private func statusItemClicked() {
+        // Check if right-click or left-click
+        if let event = NSApp.currentEvent, event.type == .rightMouseUp {
+            return // Let the menu handle right-clicks
+        }
+        
         os_log("Status bar clicked - Current state: %{public}@", log: .default, type: .info, String(describing: windowState))
         
         guard let window = window else {

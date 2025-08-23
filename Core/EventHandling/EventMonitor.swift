@@ -19,6 +19,19 @@ final class EventMonitor: NSObject {
     private weak var scrollHandler: ScrollHandler?
     private var isMonitoring = false
     
+    // Performance: Event batching system
+    private struct EventBatch {
+        let type: CGEventType
+        let event: CGEvent
+        let timestamp: TimeInterval
+    }
+    
+    private var eventQueue: [EventBatch] = []
+    private var batchTimer: Timer?
+    private let batchProcessingQueue = DispatchQueue(label: "com.buenmouse.eventbatch", qos: .userInteractive)
+    private let maxBatchSize = 10
+    private let batchTimeout: TimeInterval = 0.001 // 1ms batching
+    
     // Performance optimization: Pre-computed event mask
     private static let eventMask: CGEventMask = {
         let mask: CGEventMask = 
@@ -116,50 +129,99 @@ final class EventMonitor: NSObject {
     }
     
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // Performance optimization: inline switch for fastest path
+        // Performance: For high-frequency events, use batching
         switch type {
+        case .mouseMoved, .scrollWheel:
+            // Batch high-frequency events
+            return handleBatchedEvent(type: type, event: event)
+            
         case .otherMouseDown, .otherMouseUp, .otherMouseDragged:
-            // Gesture events - handle first as they're more common
-            if let gestureHandler = gestureHandler {
-                let result = gestureHandler.handleEvent(type: type, event: event)
-                if result == .consumed {
-                    return nil
-                }
-            }
+            // Process critical events immediately
+            return handleImmediateEvent(type: type, event: event)
             
         case .leftMouseDown, .leftMouseUp, .leftMouseDragged:
-            // Mouse events that may involve gestures
-            if let gestureHandler = gestureHandler {
-                let result = gestureHandler.handleEvent(type: type, event: event)
-                if result == .consumed {
-                    return nil
-                }
-            }
-            
-        case .scrollWheel:
-            // Scroll events - delegate to scroll handler
-            if let scrollHandler = scrollHandler {
-                let result = scrollHandler.handleEvent(type: type, event: event)
-                if result == .consumed {
-                    return nil
-                }
-            }
-            
-        case .mouseMoved:
-            // Only handle if we're in a gesture state
-            if let gestureHandler = gestureHandler {
-                let result = gestureHandler.handleEvent(type: type, event: event)
-                if result == .consumed {
-                    return nil
-                }
-            }
+            // Process critical events immediately
+            return handleImmediateEvent(type: type, event: event)
             
         default:
             // Unknown event type - pass through
             return Unmanaged.passUnretained(event)
         }
+    }
+    
+    private func handleBatchedEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        let batch = EventBatch(type: type, event: event, timestamp: CFAbsoluteTimeGetCurrent())
+        
+        batchProcessingQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            self.eventQueue.append(batch)
+            
+            // Process batch if it reaches max size
+            if self.eventQueue.count >= self.maxBatchSize {
+                self.processBatch()
+            } else {
+                // Schedule timer if not already running
+                if self.batchTimer == nil {
+                    DispatchQueue.main.async {
+                        self.batchTimer = Timer.scheduledTimer(withTimeInterval: self.batchTimeout, repeats: false) { _ in
+                            self.batchProcessingQueue.async {
+                                self.processBatch()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // For batched events, we assume they might be consumed later
+        return Unmanaged.passUnretained(event)
+    }
+    
+    private func handleImmediateEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        // Process critical events immediately for responsiveness
+        switch type {
+        case .otherMouseDown, .otherMouseUp, .otherMouseDragged,
+             .leftMouseDown, .leftMouseUp, .leftMouseDragged:
+            if let gestureHandler = gestureHandler {
+                let result = gestureHandler.handleEvent(type: type, event: event)
+                if result == .consumed {
+                    return nil
+                }
+            }
+        default:
+            break
+        }
         
         return Unmanaged.passUnretained(event)
+    }
+    
+    private func processBatch() {
+        guard !eventQueue.isEmpty else { return }
+        
+        let currentBatch = eventQueue
+        eventQueue.removeAll()
+        batchTimer?.invalidate()
+        batchTimer = nil
+        
+        // Process events in batch, filtering out duplicates and old events
+        let now = CFAbsoluteTimeGetCurrent()
+        let validEvents = currentBatch.filter { now - $0.timestamp < 0.1 } // Keep only recent events
+        
+        for eventBatch in validEvents {
+            switch eventBatch.type {
+            case .scrollWheel:
+                if let scrollHandler = scrollHandler {
+                    _ = scrollHandler.handleEvent(type: eventBatch.type, event: eventBatch.event)
+                }
+            case .mouseMoved:
+                if let gestureHandler = gestureHandler {
+                    _ = gestureHandler.handleEvent(type: eventBatch.type, event: eventBatch.event)
+                }
+            default:
+                break
+            }
+        }
     }
     
     deinit {
