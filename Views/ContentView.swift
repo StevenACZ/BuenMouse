@@ -84,7 +84,7 @@ struct ContentView<Settings: SettingsProtocol>: View {
             setupKeyboardShortcuts()
         }
         .padding(28)
-        .frame(minWidth: 1000, idealWidth: 1100, maxWidth: 1300, minHeight: 480, idealHeight: 540, maxHeight: 650)
+        .frame(minWidth: 1000, idealWidth: 1100, maxWidth: 1300, minHeight: 410, idealHeight: 470, maxHeight: 570)
     }
     
     // MARK: - Keyboard Shortcuts
