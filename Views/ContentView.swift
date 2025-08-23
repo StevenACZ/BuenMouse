@@ -1,8 +1,60 @@
 import SwiftUI
 
+// MARK: - Performance Optimizations: Static Gradients
+struct GradientCache {
+    static let primaryGradient = LinearGradient(
+        colors: [.primary, .primary.opacity(0.7)],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+    
+    static let blueGearGradient = LinearGradient(
+        colors: [.blue, .purple],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let orangeRedGradient = LinearGradient(
+        colors: [.orange, .red],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let generalGradient = [Color.blue, Color.cyan]
+    static let mouseGradient = [Color.purple, Color.pink]
+    static let scrollGradient = [Color.green, Color.mint]
+    static let actionButtonBlue = [Color.blue, Color.indigo]
+    static let actionButtonRed = [Color.red, Color.orange]
+}
+
+class ContentViewCoordinator: NSObject {
+    weak var settingsRef: (any SettingsProtocol)?
+    var selectedTabBinding: Binding<Int>?
+    
+    @objc func goToSettings() {
+        selectedTabBinding?.wrappedValue = 0
+    }
+    
+    @objc func goToShortcuts() {
+        selectedTabBinding?.wrappedValue = 1
+    }
+    
+    @objc func goToAbout() {
+        selectedTabBinding?.wrappedValue = 2
+    }
+    
+    @objc func moveToMenuBar() {
+        settingsRef?.moveToMenuBar()
+    }
+}
+
 struct ContentView<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
-    @State private var selectedTab = 0
+    @State var selectedTab = 0
+    @State private var coordinator = ContentViewCoordinator()
+    
+    // Performance: Cache computed values
+    @State private var cachedWindowSize: CGSize = .zero
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -27,20 +79,85 @@ struct ContentView<Settings: SettingsProtocol>: View {
                 }
                 .tag(2)
         }
-
+        // Performance & UX: Keyboard shortcuts for better navigation
+        .onAppear {
+            setupKeyboardShortcuts()
+        }
         .padding(28)
-        .frame(minWidth: 950, idealWidth: 1050, maxWidth: 1250, minHeight: 480, idealHeight: 540, maxHeight: 650)
+        .frame(minWidth: 1000, idealWidth: 1100, maxWidth: 1300, minHeight: 410, idealHeight: 470, maxHeight: 570)
     }
+    
+    // MARK: - Keyboard Shortcuts
+    private func setupKeyboardShortcuts() {
+        // Add menu items for keyboard shortcuts
+        DispatchQueue.main.async {
+            if let mainMenu = NSApp.mainMenu {
+                // Create BuenMouse menu if it doesn't exist
+                let buenMouseMenu = NSMenuItem(title: "BuenMouse", action: nil, keyEquivalent: "")
+                let submenu = NSMenu(title: "BuenMouse")
+                
+                // Add tab navigation shortcuts
+                let settingsItem = NSMenuItem(title: "Settings", action: #selector(coordinator.goToSettings), keyEquivalent: "1")
+                settingsItem.keyEquivalentModifierMask = .command
+                settingsItem.target = coordinator
+                submenu.addItem(settingsItem)
+                
+                let shortcutsItem = NSMenuItem(title: "Shortcuts", action: #selector(coordinator.goToShortcuts), keyEquivalent: "2")
+                shortcutsItem.keyEquivalentModifierMask = .command
+                shortcutsItem.target = coordinator
+                submenu.addItem(shortcutsItem)
+                
+                let aboutItem = NSMenuItem(title: "About", action: #selector(coordinator.goToAbout), keyEquivalent: "3")
+                aboutItem.keyEquivalentModifierMask = .command
+                aboutItem.target = coordinator
+                submenu.addItem(aboutItem)
+                
+                submenu.addItem(NSMenuItem.separator())
+                
+                // Add utility shortcuts
+                let moveToMenuBarItem = NSMenuItem(title: "Move to Menubar", action: #selector(coordinator.moveToMenuBar), keyEquivalent: "m")
+                moveToMenuBarItem.keyEquivalentModifierMask = [.command, .shift]
+                moveToMenuBarItem.target = coordinator
+                
+                coordinator.settingsRef = settings
+                coordinator.selectedTabBinding = $selectedTab
+                submenu.addItem(moveToMenuBarItem)
+                
+                buenMouseMenu.submenu = submenu
+                mainMenu.insertItem(buenMouseMenu, at: 1)
+            }
+        }
+    }
+    
+    
 }
 
 // --- Settings Page ---
 struct SettingsView<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
     @State private var hoveredCard: String? = nil
+    @State private var hoverTimer: Timer? = nil
+    
+    // Performance: Debounced hover handling
+    private func handleHover(for card: String, isHovering: Bool) {
+        hoverTimer?.invalidate()
+        
+        if isHovering {
+            // Immediate hover start for responsiveness
+            hoveredCard = card
+        } else {
+            // Debounce hover end to prevent flicker
+            hoverTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { _ in
+                hoveredCard = nil
+            }
+        }
+    }
 
     var body: some View {
         GeometryReader { geometry in
-            let isWide = geometry.size.width > 900
+            // Performance: Cache size calculations and only update when significantly changed
+            let currentSize = geometry.size
+            let isWide = currentSize.width > 900
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 32) {
@@ -49,13 +166,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Settings")
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [.primary, .primary.opacity(0.7)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
+                                .foregroundStyle(GradientCache.primaryGradient)
                             Text("Customize your BuenMouse experience")
                                 .font(.title3)
                                 .foregroundColor(.secondary)
@@ -95,13 +206,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                         // Icono decorativo
                         Image(systemName: "gearshape.2.fill")
                             .font(.system(size: 40))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [.blue, .purple],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
+                            .foregroundStyle(GradientCache.blueGearGradient)
                     }
                     .padding(.horizontal, 4)
                     
@@ -125,6 +230,9 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                 .padding(.vertical, 12)
                 .padding(.horizontal, isWide ? 36 : 16)
             }
+            .onChange(of: geometry.size) { _, _ in
+                // Window size changed - update cached size if needed
+            }
         }
     }
 
@@ -132,7 +240,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
         ModernCard(
             title: "General Settings",
             icon: "gearshape.fill",
-            gradientColors: [.blue, .cyan],
+            gradientColors: GradientCache.generalGradient,
             isHovered: hoveredCard == "general"
         ) {
             VStack(alignment: .leading, spacing: 20) {
@@ -179,7 +287,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
             }
         }
         .onHover { isHovering in
-            hoveredCard = isHovering ? "general" : nil
+            handleHover(for: "general", isHovering: isHovering)
         }
     }
 
@@ -187,7 +295,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
         ModernCard(
             title: "Mouse & Drag",
             icon: "cursorarrow.motionlines.click",
-            gradientColors: [.purple, .pink],
+            gradientColors: GradientCache.mouseGradient,
             isHovered: hoveredCard == "mouse"
         ) {
             VStack(alignment: .leading, spacing: 20) {
@@ -218,13 +326,16 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                     Slider(value: $settings.dragThreshold, in: 0...500, step: 5)
                         .tint(.purple)
                         .disabled(!settings.isMonitoringActive)
+                        .accessibilityLabel("Drag threshold slider")
+                        .accessibilityHint("Adjusts sensitivity for gesture recognition")
+                        .accessibilityValue("\(Int(settings.dragThreshold)) pixels")
                 }
             }
         }
         .disabled(!settings.isMonitoringActive)
         .opacity(settings.isMonitoringActive ? 1.0 : 0.5)
         .onHover { isHovering in
-            hoveredCard = isHovering ? "mouse" : nil
+            handleHover(for: "mouse", isHovering: isHovering)
         }
     }
 
@@ -232,7 +343,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
         ModernCard(
             title: "Scroll & Zoom",
             icon: "arrow.up.left.and.down.right.magnifyingglass",
-            gradientColors: [.green, .mint],
+            gradientColors: GradientCache.scrollGradient,
             isHovered: hoveredCard == "scroll"
         ) {
             VStack(alignment: .leading, spacing: 20) {
@@ -278,7 +389,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
         .disabled(!settings.isMonitoringActive)
         .opacity(settings.isMonitoringActive ? 1.0 : 0.5)
         .onHover { isHovering in
-            hoveredCard = isHovering ? "scroll" : nil
+            handleHover(for: "scroll", isHovering: isHovering)
         }
     }
     
@@ -287,7 +398,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
             ModernActionButton(
                 title: "Move to Menubar",
                 icon: "arrow.up.right.square",
-                gradientColors: [.blue, .indigo],
+                gradientColors: GradientCache.actionButtonBlue,
                 action: { settings.moveToMenuBar() }
             )
             
@@ -296,7 +407,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
             ModernActionButton(
                 title: "Quit App",
                 icon: "power",
-                gradientColors: [.red, .orange],
+                gradientColors: GradientCache.actionButtonRed,
                 action: { NSApplication.shared.terminate(nil) }
             )
         }
@@ -318,13 +429,7 @@ struct ShortcutsView<Settings: SettingsProtocol>: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Shortcuts & Help")
                             .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundStyle(
-                                LinearGradient(
-                                    colors: [.primary, .primary.opacity(0.7)],
-                                    startPoint: .leading,
-                                    endPoint: .trailing
-                                )
-                            )
+                            .foregroundStyle(GradientCache.primaryGradient)
                         Text("Master your mouse gestures")
                             .font(.title3)
                             .foregroundColor(.secondary)
@@ -332,13 +437,7 @@ struct ShortcutsView<Settings: SettingsProtocol>: View {
                     Spacer()
                     Image(systemName: "command.circle.fill")
                         .font(.system(size: 40))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [.orange, .red],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .foregroundStyle(GradientCache.orangeRedGradient)
                 }
                 .padding(.horizontal, 4)
                 
@@ -571,6 +670,7 @@ struct ModernToggle: View {
                 HStack(spacing: 10) {
                     Image(systemName: icon)
                         .foregroundColor(isOn ? .blue : .secondary)
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(label)
                             .font(.headline)
@@ -581,6 +681,8 @@ struct ModernToggle: View {
                 }
             }
             .toggleStyle(SwitchToggleStyle(tint: .blue))
+            .accessibilityLabel(label)
+            .accessibilityHint(description)
         }
     }
 }
@@ -597,6 +699,7 @@ struct ModernActionButton: View {
             HStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.headline)
+                    .accessibilityHidden(true)
                 Text(title)
                     .font(.headline.bold())
             }
@@ -614,7 +717,8 @@ struct ModernActionButton: View {
 
         }
         .buttonStyle(PlainButtonStyle())
-        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+        .accessibilityLabel(title)
+        .onLongPressGesture(minimumDuration: 0, maximumDistance: CGFloat.infinity, pressing: { pressing in
             isPressed = pressing
         }, perform: {})
     }

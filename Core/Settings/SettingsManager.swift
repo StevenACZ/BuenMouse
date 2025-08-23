@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import os.log
 
 final class SettingsManager: ObservableObject, SettingsProtocol {
     // MARK: - Referencia al AppDelegate
@@ -66,33 +67,56 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
     }
     
     func moveToMenuBar() {
-        appDelegate?.moveToMenuBar()
+        DispatchQueue.main.async {
+            self.appDelegate?.moveToMenuBar()
+            os_log("Moving to menu bar requested", log: .default, type: .info)
+        }
     }
     
     func updateLaunchAtLogin(_ enabled: Bool) {
-        let result = enabled ? ServiceManager.register() : ServiceManager.unregister()
+        os_log("Updating launch at login: %{public}@", log: .default, type: .info, enabled ? "enabled" : "disabled")
         
-        switch result {
-        case .success:
-            launchAtLoginError = nil
-        case .failure(let error):
-            handleServiceError(error)
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result = enabled ? ServiceManager.register() : ServiceManager.unregister()
+            
+            DispatchQueue.main.async {
+                switch result {
+                case .success:
+                    self.launchAtLoginError = nil
+                    os_log("Launch at login updated successfully", log: .default, type: .info)
+                case .failure(let error):
+                    self.handleServiceError(error)
+                }
+            }
         }
     }
     
     func verifyLaunchAtLoginStatus() {
-        let isInSync = ServiceManager.syncWithUserDefaults()
-        
-        if !isInSync {
-            print("⚠️ Estado de launch at login desincronizado, intentando corregir...")
-            updateLaunchAtLogin(launchAtLogin)
+        DispatchQueue.global(qos: .utility).async {
+            let isInSync = ServiceManager.syncWithUserDefaults()
+            
+            if !isInSync {
+                os_log("Launch at login status out of sync, attempting to correct", log: .default, type: .info)
+                DispatchQueue.main.async {
+                    self.updateLaunchAtLogin(self.launchAtLogin)
+                }
+            } else {
+                os_log("Launch at login status is synchronized", log: .default, type: .info)
+            }
         }
     }
     
     private func handleServiceError(_ error: ServiceError) {
-        DispatchQueue.main.async {
-            self.launchAtLoginError = error.localizedDescription
-            print("❌ Error en launch at login: \(error.localizedDescription)")
+        let errorMessage = error.localizedDescription
+        os_log("Launch at login error: %{public}@", log: .default, type: .error, errorMessage)
+        
+        // Ensure UI updates happen on main thread
+        if Thread.isMainThread {
+            self.launchAtLoginError = errorMessage
+        } else {
+            DispatchQueue.main.async {
+                self.launchAtLoginError = errorMessage
+            }
         }
     }
     
@@ -101,12 +125,22 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
     }
     
     func updateAppearance() {
-        DispatchQueue.main.async {
+        // Ensure we're on main thread for UI updates
+        let updateBlock = {
             if self.followSystemAppearance {
                 NSApp.appearance = nil // Follow system
+                os_log("Appearance set to follow system", log: .default, type: .info)
             } else {
-                NSApp.appearance = NSAppearance(named: self.isDarkMode ? .darkAqua : .aqua)
+                let appearance = NSAppearance(named: self.isDarkMode ? .darkAqua : .aqua)
+                NSApp.appearance = appearance
+                os_log("Appearance set to: %{public}@", log: .default, type: .info, self.isDarkMode ? "dark" : "light")
             }
+        }
+        
+        if Thread.isMainThread {
+            updateBlock()
+        } else {
+            DispatchQueue.main.async(execute: updateBlock)
         }
     }
     
@@ -117,9 +151,15 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            if self?.followSystemAppearance == true {
-                self?.objectWillChange.send()
+            guard let self = self else { return }
+            
+            if self.followSystemAppearance {
+                os_log("System appearance changed, updating UI", log: .default, type: .info)
+                self.objectWillChange.send()
+                self.updateAppearance()
             }
         }
+        
+        os_log("Appearance observer set up", log: .default, type: .info)
     }
 } 

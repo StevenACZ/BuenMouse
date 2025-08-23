@@ -160,3 +160,6 @@ PERSONAL_README.md
 
 # Claude Code
 .claude/
+
+# MCP Configuration
+.mcp.json
