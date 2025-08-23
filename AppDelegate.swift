@@ -105,7 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
     
     private func handleInitialWindowState() {
-        guard let window = window else {
+        guard window != nil else {
             os_log("Window not available for initial state setup", log: .default, type: .error)
             return
         }
@@ -188,7 +188,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         
         os_log("Status bar clicked - Current state: %{public}@", log: .default, type: .info, String(describing: windowState))
         
-        guard let window = window else {
+        guard window != nil else {
             os_log("Status bar clicked but window is nil", log: .default, type: .error)
             return
         }
