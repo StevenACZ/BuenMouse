@@ -144,5 +144,56 @@ BuenMouse/
 #### System Action Implementation
 - Use CGEvent for key simulation (faster)
 - Use AppleScript for complex system integration
-- Always run AppleScript on background queue
-- Implement error handling and logging
+- Always run AppleScript on background queue (`DispatchQueue.global`)
+- Implement comprehensive error handling and logging
+- Use `os.log` for structured debugging information
+- Ensure proper resource cleanup in all code paths
+
+#### Window Management Best Practices
+- Use `WindowState` enum for reliable state tracking
+- Always dispatch UI operations to main thread
+- Implement proper error handling for window operations
+- Add logging for debugging window state transitions
+- Use guard statements for safe unwrapping of window references
+
+## Recent Changes (Latest Update)
+
+### Status Bar Click Fix
+- **Issue**: Status bar clicks weren't showing/hiding the window reliably
+- **Solution**: Implemented `WindowState` enum with proper state tracking
+- **Benefits**: 100% reliable window show/hide functionality
+
+### Performance Optimizations
+- **EventMonitor**: Pre-computed event masks, inline switch optimization
+- **Threading**: Proper background processing for service operations
+- **Memory**: Improved resource cleanup and management
+
+### Logging & Debugging
+- **Integration**: Full `os.log` integration across all components
+- **Structured**: Proper log levels and contextual information
+- **Threading**: Thread-safe logging operations
+
+### Error Handling
+- **Comprehensive**: Better error handling in all system operations
+- **User Feedback**: Improved error reporting for service operations
+- **Recovery**: Robust error recovery mechanisms
+
+## Troubleshooting Guide
+
+### Status Bar Not Responding
+1. Check Console.app for BuenMouse logs with `os_log`
+2. Verify WindowState transitions in logs
+3. Ensure accessibility permissions are granted
+4. Look for "Window reference updated" log messages
+
+### Performance Issues
+1. Monitor event processing logs in EventMonitor
+2. Check for excessive event tap recreations
+3. Verify service operations are running on background queues
+4. Look for memory warnings or cleanup failures
+
+### Launch at Login Problems
+1. Check ServiceManager logs for detailed error information
+2. Verify sync status between UserDefaults and system
+3. Look for service registration/unregistration errors
+4. Check system-level launch agent permissions

@@ -1,6 +1,14 @@
 import Cocoa
 import SwiftUI
 import ServiceManagement
+import os.log
+
+enum WindowState {
+    case hidden
+    case visible
+    case minimized
+    case notInitialized
+}
 
 final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     // MARK: - Components
@@ -9,8 +17,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var gestureHandler: GestureHandler?
     private var scrollHandler: ScrollHandler?
     
-    var window: NSWindow?
+    var window: NSWindow? {
+        didSet {
+            windowState = window != nil ? .hidden : .notInitialized
+            os_log("Window reference updated: %{public}@", log: .default, type: .info, window != nil ? "Set" : "Cleared")
+        }
+    }
     private var statusItem: NSStatusItem?
+    private var windowState: WindowState = .notInitialized
 
     override init() {
         super.init()
@@ -18,6 +32,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        os_log("Application launching...", log: .default, type: .info)
+        
         setupStatusBar()
         setupComponents()
         eventMonitor?.requestPermissions()
@@ -27,19 +43,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             eventMonitor?.startMonitoring()
         }
         
-        // Si está configurado para iniciar en menubar, ocultar ventana
-        if settingsManager.startInMenubar {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.window?.orderOut(nil)
-            }
-        }
+        // Configurar apariencia
+        settingsManager.setupAppearanceObserver()
+        settingsManager.updateAppearance()
         
         // Verificar y sincronizar launch at login
         settingsManager.verifyLaunchAtLoginStatus()
         
-        // Configurar apariencia
-        settingsManager.setupAppearanceObserver()
-        settingsManager.updateAppearance()
+        // Esperar a que la ventana esté completamente configurada
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.handleInitialWindowState()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -67,7 +81,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
 
     func moveToMenuBar() {
-        window?.orderOut(nil)
+        DispatchQueue.main.async {
+            self.hideWindow()
+        }
+    }
+    
+    private func handleInitialWindowState() {
+        guard let window = window else {
+            os_log("Window not available for initial state setup", log: .default, type: .error)
+            return
+        }
+        
+        if settingsManager.startInMenubar {
+            os_log("Hiding window for menubar start", log: .default, type: .info)
+            hideWindow()
+        } else {
+            os_log("Showing window for normal start", log: .default, type: .info)
+            showWindow()
+        }
+    }
+    
+    private func showWindow() {
+        guard let window = window else {
+            os_log("Cannot show window: window reference is nil", log: .default, type: .error)
+            return
+        }
+        
+        os_log("Showing window...", log: .default, type: .info)
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        windowState = .visible
+    }
+    
+    private func hideWindow() {
+        guard let window = window else {
+            os_log("Cannot hide window: window reference is nil", log: .default, type: .error)
+            return
+        }
+        
+        os_log("Hiding window...", log: .default, type: .info)
+        window.orderOut(nil)
+        windowState = .hidden
     }
 
     func updateMonitoring(isActive: Bool) {
@@ -79,12 +133,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     @objc private func statusItemClicked() {
-        if let window = window {
-            if window.isVisible {
-                window.orderOut(nil)
-            } else {
-                window.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true)
+        os_log("Status bar clicked - Current state: %{public}@", log: .default, type: .info, String(describing: windowState))
+        
+        guard let window = window else {
+            os_log("Status bar clicked but window is nil", log: .default, type: .error)
+            return
+        }
+        
+        DispatchQueue.main.async {
+            switch self.windowState {
+            case .visible:
+                self.hideWindow()
+            case .hidden, .minimized, .notInitialized:
+                self.showWindow()
             }
         }
     }

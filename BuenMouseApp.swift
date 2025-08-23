@@ -1,4 +1,5 @@
 import SwiftUI
+import os.log
 
 @main
 struct BuenMouseApp: App {
@@ -6,19 +7,38 @@ struct BuenMouseApp: App {
     @State private var mainWindow: NSWindow?
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main") {
             ContentView(settings: appDelegate.settingsManager)
                 .background(WindowAccessor(window: $mainWindow))
                 .onChange(of: mainWindow) {
-                    if let win = mainWindow {
-                        appDelegate.window = win
-                        // Configurar ventana para mejor rendimiento
-                        win.titlebarAppearsTransparent = true
-                        win.isMovableByWindowBackground = true
-                        win.level = .normal
-                    }
+                    setupWindow()
                 }
         }
         .windowResizability(.contentSize)
+    }
+    
+    private func setupWindow() {
+        guard let win = mainWindow else {
+            os_log("Window setup called but mainWindow is nil", log: .default, type: .error)
+            return
+        }
+        
+        os_log("Setting up main window...", log: .default, type: .info)
+        
+        // Configurar ventana para mejor rendimiento y usabilidad
+        win.titlebarAppearsTransparent = true
+        win.isMovableByWindowBackground = true
+        win.level = .normal
+        win.backgroundColor = NSColor.controlBackgroundColor
+        
+        // Optimizar configuraciones de ventana
+        win.collectionBehavior = [.managed, .participatesInCycle]
+        win.isRestorable = false
+        
+        // Asignar al AppDelegate de forma segura
+        DispatchQueue.main.async {
+            self.appDelegate.window = win
+            os_log("Window reference assigned to AppDelegate", log: .default, type: .info)
+        }
     }
 }
