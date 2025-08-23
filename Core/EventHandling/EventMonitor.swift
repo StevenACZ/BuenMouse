@@ -131,8 +131,12 @@ final class EventMonitor: NSObject {
     func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // Performance: For high-frequency events, use batching
         switch type {
-        case .mouseMoved, .scrollWheel:
-            // Batch high-frequency events
+        case .scrollWheel:
+            // ScrollWheel needs immediate processing for invert scroll to work
+            return handleImmediateEvent(type: type, event: event)
+            
+        case .mouseMoved:
+            // Batch mouse movement events for performance
             return handleBatchedEvent(type: type, event: event)
             
         case .otherMouseDown, .otherMouseUp, .otherMouseDragged:
@@ -181,6 +185,13 @@ final class EventMonitor: NSObject {
     private func handleImmediateEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // Process critical events immediately for responsiveness
         switch type {
+        case .scrollWheel:
+            if let scrollHandler = scrollHandler {
+                let result = scrollHandler.handleEvent(type: type, event: event)
+                if result == .consumed {
+                    return nil
+                }
+            }
         case .otherMouseDown, .otherMouseUp, .otherMouseDragged,
              .leftMouseDown, .leftMouseUp, .leftMouseDragged:
             if let gestureHandler = gestureHandler {
