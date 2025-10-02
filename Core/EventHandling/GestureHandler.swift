@@ -65,7 +65,10 @@ final class GestureHandler: NSObject {
                 let dx = abs(mouseLocation.x - startLocation.x)
                 let dy = abs(mouseLocation.y - startLocation.y)
                 if hypot(dx, dy) < 5 {
-                    SystemActionRunner.activateMissionControl()
+                    // Only activate Mission Control if enabled in settings
+                    if settingsManager?.enableMissionControl == true {
+                        SystemActionRunner.activateMissionControl()
+                    }
                 }
                 currentState = .idle
                 return .consumed
@@ -104,11 +107,14 @@ final class GestureHandler: NSObject {
                 let deltaX = mouseLocation.x - startLocation.x
                 let threshold = settingsManager?.dragThreshold ?? 40.0
                 if abs(deltaX) > CGFloat(threshold) {
-                    let invertDirection = settingsManager?.invertDragDirection ?? false
-                    if deltaX > 0 {
-                        invertDirection ? SystemActionRunner.moveToPreviousSpace() : SystemActionRunner.moveToNextSpace()
-                    } else {
-                        invertDirection ? SystemActionRunner.moveToNextSpace() : SystemActionRunner.moveToPreviousSpace()
+                    // Only switch spaces if enabled in settings
+                    if settingsManager?.enableSpaceNavigation == true {
+                        let invertDirection = settingsManager?.invertDragDirection ?? false
+                        if deltaX > 0 {
+                            invertDirection ? SystemActionRunner.moveToPreviousSpace() : SystemActionRunner.moveToNextSpace()
+                        } else {
+                            invertDirection ? SystemActionRunner.moveToNextSpace() : SystemActionRunner.moveToPreviousSpace()
+                        }
                     }
                     currentState = .idle
                     return .consumed

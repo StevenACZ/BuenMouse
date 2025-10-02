@@ -10,9 +10,11 @@ protocol SettingsProtocol: ObservableObject {
     var dragThreshold: Double { get set }
     var invertScroll: Bool { get set }
     var enableScrollZoom: Bool { get set }
+    var enableMissionControl: Bool { get set }
+    var enableSpaceNavigation: Bool { get set }
     var isDarkMode: Bool { get set }
     var followSystemAppearance: Bool { get set }
-    
+
     func moveToMenuBar()
     func updateLaunchAtLogin(_ enabled: Bool)
 } 

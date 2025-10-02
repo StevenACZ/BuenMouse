@@ -48,7 +48,21 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
     @Published var enableScrollZoom: Bool = UserDefaults.standard.bool(forKey: "enableScrollZoom") {
         didSet { UserDefaults.standard.set(enableScrollZoom, forKey: "enableScrollZoom") }
     }
-    
+
+    @Published var enableMissionControl: Bool = {
+        let value = UserDefaults.standard.object(forKey: "enableMissionControl")
+        return value as? Bool ?? true
+    }() {
+        didSet { UserDefaults.standard.set(enableMissionControl, forKey: "enableMissionControl") }
+    }
+
+    @Published var enableSpaceNavigation: Bool = {
+        let value = UserDefaults.standard.object(forKey: "enableSpaceNavigation")
+        return value as? Bool ?? true
+    }() {
+        didSet { UserDefaults.standard.set(enableSpaceNavigation, forKey: "enableSpaceNavigation") }
+    }
+
     @Published var isDarkMode: Bool = UserDefaults.standard.bool(forKey: "isDarkMode") {
         didSet { 
             UserDefaults.standard.set(isDarkMode, forKey: "isDarkMode")
