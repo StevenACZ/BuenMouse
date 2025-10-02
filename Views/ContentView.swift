@@ -52,9 +52,12 @@ struct ContentView<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
     @State var selectedTab = 0
     @State private var coordinator = ContentViewCoordinator()
-    
+
     // Performance: Cache computed values
     @State private var cachedWindowSize: CGSize = .zero
+
+    // Flag to ensure keyboard shortcuts are only set up once (instance-based)
+    @State private var hasSetupKeyboardShortcuts = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -81,7 +84,11 @@ struct ContentView<Settings: SettingsProtocol>: View {
         }
         // Performance & UX: Keyboard shortcuts for better navigation
         .onAppear {
-            setupKeyboardShortcuts()
+            // Only setup once to prevent duplicates and freezes
+            if !hasSetupKeyboardShortcuts {
+                setupKeyboardShortcuts()
+                hasSetupKeyboardShortcuts = true
+            }
         }
         .padding(28)
         .frame(minWidth: 1000, idealWidth: 1100, maxWidth: 1300, minHeight: 410, idealHeight: 470, maxHeight: 570)
@@ -91,41 +98,46 @@ struct ContentView<Settings: SettingsProtocol>: View {
     private func setupKeyboardShortcuts() {
         // Add menu items for keyboard shortcuts
         DispatchQueue.main.async {
-            if let mainMenu = NSApp.mainMenu {
-                // Create BuenMouse menu if it doesn't exist
-                let buenMouseMenu = NSMenuItem(title: "BuenMouse", action: nil, keyEquivalent: "")
-                let submenu = NSMenu(title: "BuenMouse")
-                
-                // Add tab navigation shortcuts
-                let settingsItem = NSMenuItem(title: "Settings", action: #selector(coordinator.goToSettings), keyEquivalent: "1")
-                settingsItem.keyEquivalentModifierMask = .command
-                settingsItem.target = coordinator
-                submenu.addItem(settingsItem)
-                
-                let shortcutsItem = NSMenuItem(title: "Shortcuts", action: #selector(coordinator.goToShortcuts), keyEquivalent: "2")
-                shortcutsItem.keyEquivalentModifierMask = .command
-                shortcutsItem.target = coordinator
-                submenu.addItem(shortcutsItem)
-                
-                let aboutItem = NSMenuItem(title: "About", action: #selector(coordinator.goToAbout), keyEquivalent: "3")
-                aboutItem.keyEquivalentModifierMask = .command
-                aboutItem.target = coordinator
-                submenu.addItem(aboutItem)
-                
-                submenu.addItem(NSMenuItem.separator())
-                
-                // Add utility shortcuts
-                let moveToMenuBarItem = NSMenuItem(title: "Move to Menubar", action: #selector(coordinator.moveToMenuBar), keyEquivalent: "m")
-                moveToMenuBarItem.keyEquivalentModifierMask = [.command, .shift]
-                moveToMenuBarItem.target = coordinator
-                
-                coordinator.settingsRef = settings
-                coordinator.selectedTabBinding = $selectedTab
-                submenu.addItem(moveToMenuBarItem)
-                
-                buenMouseMenu.submenu = submenu
-                mainMenu.insertItem(buenMouseMenu, at: 1)
+            guard let mainMenu = NSApp.mainMenu else { return }
+
+            // Check if BuenMouse menu already exists to prevent duplicates
+            if mainMenu.items.contains(where: { $0.title == "BuenMouse" }) {
+                return
             }
+
+            // Create BuenMouse menu if it doesn't exist
+            let buenMouseMenu = NSMenuItem(title: "BuenMouse", action: nil, keyEquivalent: "")
+            let submenu = NSMenu(title: "BuenMouse")
+
+            // Add tab navigation shortcuts
+            let settingsItem = NSMenuItem(title: "Settings", action: #selector(self.coordinator.goToSettings), keyEquivalent: "1")
+            settingsItem.keyEquivalentModifierMask = .command
+            settingsItem.target = self.coordinator
+            submenu.addItem(settingsItem)
+
+            let shortcutsItem = NSMenuItem(title: "Shortcuts", action: #selector(self.coordinator.goToShortcuts), keyEquivalent: "2")
+            shortcutsItem.keyEquivalentModifierMask = .command
+            shortcutsItem.target = self.coordinator
+            submenu.addItem(shortcutsItem)
+
+            let aboutItem = NSMenuItem(title: "About", action: #selector(self.coordinator.goToAbout), keyEquivalent: "3")
+            aboutItem.keyEquivalentModifierMask = .command
+            aboutItem.target = self.coordinator
+            submenu.addItem(aboutItem)
+
+            submenu.addItem(NSMenuItem.separator())
+
+            // Add utility shortcuts
+            let moveToMenuBarItem = NSMenuItem(title: "Move to Menubar", action: #selector(self.coordinator.moveToMenuBar), keyEquivalent: "m")
+            moveToMenuBarItem.keyEquivalentModifierMask = [.command, .shift]
+            moveToMenuBarItem.target = self.coordinator
+
+            self.coordinator.settingsRef = self.settings
+            self.coordinator.selectedTabBinding = self.$selectedTab
+            submenu.addItem(moveToMenuBarItem)
+
+            buenMouseMenu.submenu = submenu
+            mainMenu.insertItem(buenMouseMenu, at: 1)
         }
     }
     

@@ -23,10 +23,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             os_log("Window reference updated: %{public}@", log: .default, type: .info, window != nil ? "Set" : "Cleared")
 
             // Handle initial window state immediately when window is assigned
+            // No need for async - we're already on main thread from WindowAccessor
             if window != nil {
-                DispatchQueue.main.async {
-                    self.handleInitialWindowState()
-                }
+                handleInitialWindowState()
             }
         }
     }
@@ -128,11 +127,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             os_log("Cannot show window: window reference is nil", log: .default, type: .error)
             return
         }
-        
-        os_log("Showing window...", log: .default, type: .info)
+
+        os_log("Showing window - current visibility: %{public}@, miniaturized: %{public}@",
+               log: .default, type: .info,
+               window.isVisible ? "visible" : "hidden",
+               window.isMiniaturized ? "yes" : "no")
+
+        // Restore if miniaturized
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
+        }
+
+        // Force window to front
         window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+
+        // Activate app
         NSApp.activate(ignoringOtherApps: true)
-        windowState = .visible
+
+        // Verify window is actually visible before updating state
+        if window.isVisible {
+            windowState = .visible
+            os_log("Window shown successfully", log: .default, type: .info)
+        } else {
+            os_log("Warning: Window may not be visible after show attempt", log: .default, type: .error)
+            windowState = .visible // Update anyway to allow retry
+        }
     }
     
     private func hideWindow() {

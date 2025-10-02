@@ -34,11 +34,9 @@ struct BuenMouseApp: App {
         // Optimizar configuraciones de ventana
         win.collectionBehavior = [.managed, .participatesInCycle]
         win.isRestorable = false
-        
-        // Asignar al AppDelegate de forma segura
-        DispatchQueue.main.async {
-            self.appDelegate.window = win
-            os_log("Window reference assigned to AppDelegate", log: .default, type: .info)
-        }
+
+        // Asignar al AppDelegate directamente - we're already on main thread
+        self.appDelegate.window = win
+        os_log("Window reference assigned to AppDelegate", log: .default, type: .info)
     }
 }
