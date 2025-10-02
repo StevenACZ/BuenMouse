@@ -293,21 +293,39 @@ struct SettingsView<Settings: SettingsProtocol>: View {
 
     private var mouseBox: some View {
         ModernCard(
-            title: "Mouse & Drag",
+            title: "Gestures & Navigation",
             icon: "cursorarrow.motionlines.click",
             gradientColors: GradientCache.mouseGradient,
             isHovered: hoveredCard == "mouse"
         ) {
             VStack(alignment: .leading, spacing: 20) {
                 ModernToggle(
+                    isOn: $settings.enableMissionControl,
+                    label: "Enable Mission Control",
+                    icon: "macwindow.badge.plus",
+                    description: "Activate with middle mouse click"
+                )
+                .disabled(!settings.isMonitoringActive)
+                .opacity(settings.isMonitoringActive ? 1.0 : 0.5)
+
+                ModernToggle(
+                    isOn: $settings.enableSpaceNavigation,
+                    label: "Enable Space Navigation",
+                    icon: "square.3.layers.3d",
+                    description: "Switch spaces with middle drag"
+                )
+                .disabled(!settings.isMonitoringActive)
+                .opacity(settings.isMonitoringActive ? 1.0 : 0.5)
+
+                ModernToggle(
                     isOn: $settings.invertDragDirection,
                     label: "Invert drag direction",
                     icon: "arrow.left.and.right.circle",
                     description: "Reverse horizontal drag behavior"
                 )
-                .disabled(!settings.isMonitoringActive)
-                .opacity(settings.isMonitoringActive ? 1.0 : 0.5)
-                
+                .disabled(!settings.isMonitoringActive || !settings.enableSpaceNavigation)
+                .opacity(settings.isMonitoringActive && settings.enableSpaceNavigation ? 1.0 : 0.5)
+
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "slider.horizontal.below.square.filled.and.square")
@@ -322,10 +340,10 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                             .padding(.vertical, 4)
                             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                     }
-                    
+
                     Slider(value: $settings.dragThreshold, in: 0...500, step: 5)
                         .tint(.purple)
-                        .disabled(!settings.isMonitoringActive)
+                        .disabled(!settings.isMonitoringActive || !settings.enableSpaceNavigation)
                         .accessibilityLabel("Drag threshold slider")
                         .accessibilityHint("Adjusts sensitivity for gesture recognition")
                         .accessibilityValue("\(Int(settings.dragThreshold)) pixels")
