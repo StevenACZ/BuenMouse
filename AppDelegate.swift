@@ -21,6 +21,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         didSet {
             windowState = window != nil ? .hidden : .notInitialized
             os_log("Window reference updated: %{public}@", log: .default, type: .info, window != nil ? "Set" : "Cleared")
+
+            // Handle initial window state immediately when window is assigned
+            if window != nil {
+                DispatchQueue.main.async {
+                    self.handleInitialWindowState()
+                }
+            }
         }
     }
     private var statusItem: NSStatusItem?
@@ -49,14 +56,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         
         // Update status bar after settings are ready
         updateStatusBarIcon()
-        
+
         // Verificar y sincronizar launch at login
         settingsManager.verifyLaunchAtLoginStatus()
-        
-        // Esperar a que la ventana esté completamente configurada
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            self.handleInitialWindowState()
-        }
+
+        // Note: handleInitialWindowState() is now called from window's didSet
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -185,14 +189,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         if let event = NSApp.currentEvent, event.type == .rightMouseUp {
             return // Let the menu handle right-clicks
         }
-        
+
         os_log("Status bar clicked - Current state: %{public}@", log: .default, type: .info, String(describing: windowState))
-        
-        guard window != nil else {
-            os_log("Status bar clicked but window is nil", log: .default, type: .error)
+
+        // Fallback: If window is nil, try to recover it from NSApp.windows
+        var targetWindow = window
+        if targetWindow == nil {
+            os_log("Window reference is nil, attempting recovery...", log: .default, type: .warning)
+            // Find our window by checking for BuenMouse-related content
+            targetWindow = NSApp.windows.first {
+                $0.contentView?.subviews.first?.className.contains("BuenMouse") == true ||
+                $0.contentView?.className.contains("NSHostingView") == true
+            }
+            if let recovered = targetWindow {
+                window = recovered
+                os_log("Window reference recovered from NSApp.windows", log: .default, type: .info)
+            }
+        }
+
+        guard targetWindow != nil else {
+            os_log("Status bar clicked but window could not be found", log: .default, type: .error)
             return
         }
-        
+
         DispatchQueue.main.async {
             switch self.windowState {
             case .visible:
