@@ -163,3 +163,6 @@ PERSONAL_README.md
 
 # MCP Configuration
 .mcp.json
+
+# Project documentation (keep local only)
+CLAUDE.md
