@@ -195,7 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         // Fallback: If window is nil, try to recover it from NSApp.windows
         var targetWindow = window
         if targetWindow == nil {
-            os_log("Window reference is nil, attempting recovery...", log: .default, type: .warning)
+            os_log("Window reference is nil, attempting recovery...", log: .default, type: .error)
             // Find our window by checking for BuenMouse-related content
             targetWindow = NSApp.windows.first {
                 $0.contentView?.subviews.first?.className.contains("BuenMouse") == true ||
