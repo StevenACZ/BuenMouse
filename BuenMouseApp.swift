@@ -5,6 +5,7 @@ import os.log
 struct BuenMouseApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var mainWindow: NSWindow?
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
         WindowGroup(id: "main") {
@@ -13,8 +14,17 @@ struct BuenMouseApp: App {
                 .onChange(of: mainWindow) {
                     setupWindow()
                 }
+                .onAppear {
+                    // Force window creation on first appearance
+                    os_log("ContentView appeared - window should be created", log: .default, type: .info)
+                }
         }
         .windowResizability(.contentSize)
+        .defaultSize(width: 700, height: 600)
+        .commands {
+            // This ensures WindowGroup is properly registered
+            CommandGroup(replacing: .newItem) { }
+        }
     }
     
     private func setupWindow() {

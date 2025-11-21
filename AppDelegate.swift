@@ -63,7 +63,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         // Verificar y sincronizar launch at login
         settingsManager.verifyLaunchAtLoginStatus()
 
-        // Note: handleInitialWindowState() is now called from window's didSet
+        // CRITICAL: Force window search after a delay if window isn't set
+        // This ensures the window exists even when starting hidden
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.ensureWindowExists()
+        }
+    }
+
+    private func ensureWindowExists() {
+        os_log("Ensuring window exists...", log: .default, type: .info)
+
+        // If window reference is already set, we're good
+        if window != nil {
+            os_log("Window reference already exists", log: .default, type: .info)
+            return
+        }
+
+        // Try to find the window
+        let allWindows = NSApp.windows
+        os_log("Found %d windows, searching for main window", log: .default, type: .info, allWindows.count)
+
+        for (index, win) in allWindows.enumerated() {
+            os_log("Window %d: title='%{public}@', visible=%{public}@, contentView=%{public}@",
+                   log: .default, type: .info,
+                   index,
+                   win.title,
+                   win.isVisible ? "YES" : "NO",
+                   String(describing: type(of: win.contentView)))
+
+            if let contentView = win.contentView,
+               String(describing: type(of: contentView)).contains("NSHostingView") {
+                window = win
+                os_log("Found and assigned main window (index %d)", log: .default, type: .info, index)
+
+                // Don't call handleInitialWindowState since it might have already been called
+                // Just set the state based on current setting
+                if settingsManager.startInMenubar && !isInitialSetupDone {
+                    os_log("Late initialization - hiding window for menubar start", log: .default, type: .info)
+                    win.orderOut(nil)
+                    windowState = .hidden
+                    isInitialSetupDone = true
+                }
+                return
+            }
+        }
+
+        os_log("ERROR: Could not find main window after search", log: .default, type: .error)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -125,13 +170,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                settingsManager.startInMenubar ? "YES" : "NO")
 
         if settingsManager.startInMenubar {
-            // Start hidden - don't show the window at all
-            os_log("Starting in menubar - keeping window hidden", log: .default, type: .info)
-            windowState = .hidden
-            // Don't call hideWindow() - just don't show it
-            win.orderOut(nil)
+            // TRICK: Show window briefly to force SwiftUI to fully initialize it
+            // Then hide it immediately - user won't notice
+            os_log("Starting in menubar - showing window briefly then hiding", log: .default, type: .info)
+
+            // Show the window to force creation
+            win.makeKeyAndOrderFront(nil)
+            windowState = .visible
+
+            // Hide it immediately after SwiftUI finishes layout
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                os_log("Hiding window after brief display", log: .default, type: .info)
+                win.orderOut(nil)
+                self?.windowState = .hidden
+            }
         } else {
-            // Start visible - show the window
+            // Start visible - show the window normally
             os_log("Starting visible - showing window", log: .default, type: .info)
             showWindow()
         }
