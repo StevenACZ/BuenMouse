@@ -37,6 +37,9 @@ struct ContentView<Settings: SettingsProtocol>: View {
 
                 Spacer(minLength: 20)
 
+                // Reset to Defaults
+                resetSection
+
                 // Action Buttons
                 actionButtonsSection
             }
@@ -44,16 +47,57 @@ struct ContentView<Settings: SettingsProtocol>: View {
         }
         .frame(minWidth: 600, idealWidth: 700, maxWidth: 900,
                minHeight: 500, idealHeight: 600, maxHeight: 800)
+        .onAppear {
+            setupKeyboardShortcuts()
+        }
+    }
+
+    private func setupKeyboardShortcuts() {
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            // ESC key
+            if event.keyCode == 53 {
+                settings.moveToMenuBar()
+                return nil
+            }
+            // CMD+W
+            if event.keyCode == 13 && event.modifierFlags.contains(.command) {
+                settings.moveToMenuBar()
+                return nil
+            }
+            return event
+        }
     }
 
     // MARK: - Header
     private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("BuenMouse Settings")
-                .font(.system(size: 28, weight: .bold))
-            Text("Configure your mouse gestures and preferences")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+        HStack {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("BuenMouse Settings")
+                    .font(.system(size: 28, weight: .bold))
+                Text("Configure your mouse gestures and preferences")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            // Monitoring Status Badge
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(settings.isMonitoringActive ? Color.green : Color.gray)
+                    .frame(width: 8, height: 8)
+
+                Text(settings.isMonitoringActive ? "Active" : "Inactive")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(settings.isMonitoringActive ? .green : .secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(settings.isMonitoringActive ? Color.green.opacity(0.1) : Color.gray.opacity(0.1))
+            )
         }
     }
 
@@ -73,6 +117,7 @@ struct ContentView<Settings: SettingsProtocol>: View {
                         .foregroundColor(.secondary)
                 }
             }
+            .help("Turn on/off all mouse gesture recognition")
 
             Toggle(isOn: $settings.launchAtLogin) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -131,6 +176,7 @@ struct ContentView<Settings: SettingsProtocol>: View {
                 }
             }
             .disabled(!settings.isMonitoringActive)
+            .help("Press middle mouse button to open Mission Control")
 
             Toggle(isOn: $settings.enableSpaceNavigation) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -142,6 +188,7 @@ struct ContentView<Settings: SettingsProtocol>: View {
                 }
             }
             .disabled(!settings.isMonitoringActive)
+            .help("Hold middle mouse button and drag horizontally to switch spaces")
 
             Toggle(isOn: $settings.invertDragDirection) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -193,6 +240,7 @@ struct ContentView<Settings: SettingsProtocol>: View {
                 }
             }
             .disabled(!settings.isMonitoringActive)
+            .help("Hold Control key and scroll to zoom in/out")
 
             if settings.enableScrollZoom {
                 HStack(spacing: 8) {
@@ -311,6 +359,24 @@ struct ContentView<Settings: SettingsProtocol>: View {
             }
         }
         .padding(.horizontal, 4)
+    }
+
+    // MARK: - Reset Section
+    private var resetSection: some View {
+        Button(action: {
+            settings.resetToDefaults()
+        }) {
+            HStack {
+                Image(systemName: "arrow.counterclockwise")
+                Text("Reset All Settings to Defaults")
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .tint(.orange)
+        .help("Restore all settings to their default values")
     }
 
     // MARK: - Action Buttons

@@ -166,14 +166,33 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
             queue: .main
         ) { [weak self] _ in
             guard let self = self else { return }
-            
+
             if self.followSystemAppearance {
                 os_log("System appearance changed, updating UI", log: .default, type: .info)
                 self.objectWillChange.send()
                 self.updateAppearance()
             }
         }
-        
+
         os_log("Appearance observer set up", log: .default, type: .info)
+    }
+
+    func resetToDefaults() {
+        os_log("Resetting all settings to defaults", log: .default, type: .info)
+
+        // Reset all settings to default values
+        isMonitoringActive = true
+        launchAtLogin = false
+        startInMenubar = false
+        invertDragDirection = false
+        dragThreshold = 40.0
+        invertScroll = false
+        enableScrollZoom = false
+        enableMissionControl = true
+        enableSpaceNavigation = true
+        isDarkMode = false
+        followSystemAppearance = true
+
+        os_log("All settings reset to defaults", log: .default, type: .info)
     }
 } 

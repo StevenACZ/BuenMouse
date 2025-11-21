@@ -17,4 +17,5 @@ protocol SettingsProtocol: ObservableObject {
 
     func moveToMenuBar()
     func updateLaunchAtLogin(_ enabled: Bool)
+    func resetToDefaults()
 } 
