@@ -45,22 +45,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     private func setupStatusBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        if let button = statusItem?.button {
-            updateStatusBarIcon()
+        guard statusItem?.button != nil else { return }
+        
+        updateStatusBarIcon()
 
-            let menu = NSMenu()
+        let menu = NSMenu()
 
-            let toggleItem = NSMenuItem(title: settingsManager.isMonitoringActive ? "Disable Monitoring" : "Enable Monitoring", action: #selector(toggleMonitoring), keyEquivalent: "")
-            toggleItem.target = self
-            toggleItem.tag = 999
-            menu.addItem(toggleItem)
+        let toggleItem = NSMenuItem(title: settingsManager.isMonitoringActive ? "Disable Monitoring" : "Enable Monitoring", action: #selector(toggleMonitoring), keyEquivalent: "")
+        toggleItem.target = self
+        toggleItem.tag = 999
+        menu.addItem(toggleItem)
 
-            menu.addItem(NSMenuItem.separator())
-            let quitItem = NSMenuItem(title: "Quit BuenMouse", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-            menu.addItem(quitItem)
+        menu.addItem(NSMenuItem.separator())
+        let quitItem = NSMenuItem(title: "Quit BuenMouse", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(quitItem)
 
-            statusItem?.menu = menu
-        }
+        statusItem?.menu = menu
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        NSApp.activate(ignoringOtherApps: true)
+        return true
     }
 
     private func setupComponents() {
