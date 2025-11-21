@@ -118,43 +118,6 @@ struct ContentView<Settings: SettingsProtocol>: View {
                 }
             }
             .help("Turn on/off all mouse gesture recognition")
-
-            Toggle(isOn: $settings.launchAtLogin) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Launch at Login")
-                        .font(.body)
-                    Text("Start automatically when you log in")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            if let error = settings.launchAtLoginError {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
-                        .font(.caption)
-                    Text(error)
-                        .font(.caption)
-                        .foregroundColor(.orange)
-                    Button("Retry") {
-                        settings.updateLaunchAtLogin(settings.launchAtLogin)
-                    }
-                    .font(.caption)
-                    .buttonStyle(.borderless)
-                }
-                .padding(.leading, 20)
-            }
-
-            Toggle(isOn: $settings.startInMenubar) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Start in Menu Bar")
-                        .font(.body)
-                    Text("Hide window on startup")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
         }
         .padding(.horizontal, 4)
     }
