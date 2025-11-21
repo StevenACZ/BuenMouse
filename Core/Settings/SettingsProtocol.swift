@@ -11,7 +11,7 @@ protocol SettingsProtocol: ObservableObject {
     var enableSpaceNavigation: Bool { get set }
     var isDarkMode: Bool { get set }
     var followSystemAppearance: Bool { get set }
+    var launchAtLogin: Bool { get set }
 
-    func moveToMenuBar()
     func resetToDefaults()
 } 

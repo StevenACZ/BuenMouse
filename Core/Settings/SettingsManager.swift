@@ -13,7 +13,7 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
     }() {
         didSet {
             UserDefaults.standard.set(isMonitoringActive, forKey: "isMonitoringActive")
-            appDelegate?.updateMonitoring(isActive: isMonitoringActive)
+            appDelegate?.onMonitoringChanged()
         }
     }
 
@@ -67,12 +67,16 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
         }
     }
 
-    func moveToMenuBar() {
-        DispatchQueue.main.async {
-            self.appDelegate?.moveToMenuBar()
-            os_log("Moving to menu bar requested", log: .default, type: .info)
+    @Published var launchAtLogin: Bool = ServiceManager.isEnabled {
+        didSet {
+            if launchAtLogin {
+                _ = ServiceManager.register()
+            } else {
+                _ = ServiceManager.unregister()
+            }
         }
     }
+
 
     func updateAppearance() {
         let updateBlock = {

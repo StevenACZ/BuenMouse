@@ -45,28 +45,10 @@ struct ContentView<Settings: SettingsProtocol>: View {
             }
             .padding(32)
         }
-        .frame(minWidth: 600, idealWidth: 700, maxWidth: 900,
+        .frame(minWidth: 400, idealWidth: 400, maxWidth: 600,
                minHeight: 500, idealHeight: 600, maxHeight: 800)
-        .onAppear {
-            setupKeyboardShortcuts()
-        }
     }
 
-    private func setupKeyboardShortcuts() {
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            // ESC key
-            if event.keyCode == 53 {
-                settings.moveToMenuBar()
-                return nil
-            }
-            // CMD+W
-            if event.keyCode == 13 && event.modifierFlags.contains(.command) {
-                settings.moveToMenuBar()
-                return nil
-            }
-            return event
-        }
-    }
 
     // MARK: - Header
     private var headerSection: some View {
@@ -118,6 +100,17 @@ struct ContentView<Settings: SettingsProtocol>: View {
                 }
             }
             .help("Turn on/off all mouse gesture recognition")
+
+            Toggle(isOn: $settings.launchAtLogin) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Launch at Login")
+                        .font(.body)
+                    Text("Automatically start BuenMouse when you log in")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .help("Start BuenMouse automatically at system login")
         }
         .padding(.horizontal, 4)
     }
@@ -344,19 +337,21 @@ struct ContentView<Settings: SettingsProtocol>: View {
 
     // MARK: - Action Buttons
     private var actionButtonsSection: some View {
-        HStack(spacing: 16) {
+        VStack(spacing: 12) {
             Button(action: {
-                settings.moveToMenuBar()
+                // Hide the window
+                NSApp.keyWindow?.orderOut(nil)
             }) {
                 HStack {
-                    Image(systemName: "arrow.up.right.square")
-                    Text("Move to Menu Bar")
+                    Image(systemName: "eye.slash")
+                    Text("Hide Window")
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
+            .tint(.blue)
 
             Button(action: {
                 NSApplication.shared.terminate(nil)
