@@ -45,7 +45,7 @@ struct ContentView<Settings: SettingsProtocol>: View {
             }
             .padding(32)
         }
-        .frame(minWidth: 600, idealWidth: 700, maxWidth: 900,
+        .frame(minWidth: 400, idealWidth: 400, maxWidth: 600,
                minHeight: 500, idealHeight: 600, maxHeight: 800)
     }
 
@@ -337,18 +337,35 @@ struct ContentView<Settings: SettingsProtocol>: View {
 
     // MARK: - Action Buttons
     private var actionButtonsSection: some View {
-        Button(action: {
-            NSApplication.shared.terminate(nil)
-        }) {
-            HStack {
-                Image(systemName: "power")
-                Text("Quit BuenMouse")
+        VStack(spacing: 12) {
+            Button(action: {
+                // Hide the window
+                NSApp.keyWindow?.orderOut(nil)
+            }) {
+                HStack {
+                    Image(systemName: "eye.slash")
+                    Text("Hide Window")
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .tint(.blue)
+
+            Button(action: {
+                NSApplication.shared.terminate(nil)
+            }) {
+                HStack {
+                    Image(systemName: "power")
+                    Text("Quit BuenMouse")
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .tint(.red)
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
-        .tint(.red)
     }
 }

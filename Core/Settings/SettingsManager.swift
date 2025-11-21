@@ -13,6 +13,7 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
     }() {
         didSet {
             UserDefaults.standard.set(isMonitoringActive, forKey: "isMonitoringActive")
+            appDelegate?.onMonitoringChanged()
         }
     }
 

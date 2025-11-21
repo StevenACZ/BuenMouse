@@ -72,40 +72,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private func setupStatusBar() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
-        if let button = statusItem?.button {
-            // Use SF Symbol for mouse
-            let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
-            if let mouseImage = NSImage(systemSymbolName: "computermouse.fill", accessibilityDescription: "BuenMouse") {
-                let configuredImage = mouseImage.withSymbolConfiguration(config)
-                button.image = configuredImage
-            }
-            button.action = #selector(statusBarClicked)
-            button.target = self
-        }
+        updateStatusBarIcon()
+
+        // Create the dropdown menu
+        let menu = NSMenu()
+
+        // Show Settings
+        let showSettingsItem = NSMenuItem(title: "Show Settings", action: #selector(showSettingsClicked), keyEquivalent: "")
+        showSettingsItem.target = self
+        menu.addItem(showSettingsItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // Gesture Monitoring Toggle
+        let monitoringItem = NSMenuItem(title: "Gesture Monitoring", action: #selector(toggleMonitoringClicked), keyEquivalent: "")
+        monitoringItem.target = self
+        monitoringItem.state = settingsManager.isMonitoringActive ? .on : .off
+        menu.addItem(monitoringItem)
+
+        menu.addItem(NSMenuItem.separator())
+
+        // Quit
+        let quitItem = NSMenuItem(title: "Quit BuenMouse", action: #selector(quitClicked), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+
+        statusItem?.menu = menu
     }
 
-    @objc private func statusBarClicked() {
-        os_log("=== STATUS BAR CLICKED ===", log: .default, type: .info)
-        os_log("mainWindow reference: %{public}@", log: .default, type: .info, mainWindow == nil ? "NIL" : "EXISTS")
-        os_log("NSApp.windows.count: %d", log: .default, type: .info, NSApp.windows.count)
+    @objc private func showSettingsClicked() {
+        os_log("Show Settings clicked", log: .default, type: .info)
+        showWindow()
+    }
 
-        // Log all windows for debugging
-        for (index, window) in NSApp.windows.enumerated() {
-            os_log("Window[%d]: class=%{public}@, visible=%{public}@, titled=%{public}@",
-                   log: .default, type: .info,
-                   index,
-                   window.className,
-                   window.isVisible ? "YES" : "NO",
-                   window.styleMask.contains(.titled) ? "YES" : "NO")
+    @objc private func toggleMonitoringClicked() {
+        settingsManager.isMonitoringActive.toggle()
+
+        // Update menu item state
+        if let menu = statusItem?.menu,
+           let monitoringItem = menu.item(withTitle: "Gesture Monitoring") {
+            monitoringItem.state = settingsManager.isMonitoringActive ? .on : .off
         }
 
-        if let window = mainWindow, window.isVisible {
-            os_log("Action: HIDE (window exists and visible)", log: .default, type: .info)
-            hideWindow()
+        // Update icon
+        updateStatusBarIcon()
+
+        // Start/stop monitoring
+        if settingsManager.isMonitoringActive {
+            eventMonitor?.startMonitoring()
         } else {
-            os_log("Action: SHOW (window nil or hidden)", log: .default, type: .info)
-            showWindow()
+            eventMonitor?.stopMonitoring()
         }
+
+        os_log("Monitoring toggled: %{public}@", log: .default, type: .info,
+               settingsManager.isMonitoringActive ? "ON" : "OFF")
+    }
+
+    @objc private func quitClicked() {
+        NSApplication.shared.terminate(nil)
     }
 
     // MARK: - Window Management
@@ -141,7 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         let contentView = ContentView(settings: settingsManager)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 600),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 600),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -181,11 +205,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     func updateStatusBarIcon() {
         guard let button = statusItem?.button else { return }
 
-        let symbolName = settingsManager.isMonitoringActive ? "computermouse.fill" : "computermouse"
         let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
 
-        if let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "BuenMouse") {
-            button.image = image.withSymbolConfiguration(config)
+        if settingsManager.isMonitoringActive {
+            // Active: filled mouse icon
+            if let image = NSImage(systemSymbolName: "computermouse.fill", accessibilityDescription: "BuenMouse - Active") {
+                button.image = image.withSymbolConfiguration(config)
+                button.contentTintColor = nil // Default color
+            }
+        } else {
+            // Inactive: mouse with slash (disabled look)
+            if let image = NSImage(systemSymbolName: "computermouse", accessibilityDescription: "BuenMouse - Inactive") {
+                button.image = image.withSymbolConfiguration(config)
+                button.contentTintColor = .gray
+            }
+        }
+    }
+
+    // Called when monitoring changes from Settings UI
+    func onMonitoringChanged() {
+        updateStatusBarIcon()
+
+        // Update menu item state
+        if let menu = statusItem?.menu,
+           let monitoringItem = menu.item(withTitle: "Gesture Monitoring") {
+            monitoringItem.state = settingsManager.isMonitoringActive ? .on : .off
         }
     }
 }
