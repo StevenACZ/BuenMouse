@@ -7,6 +7,6 @@
     <key>NSAppleEventsUsageDescription</key>
     <string>BuenMouse necesita permiso para controlar otras aplicaciones del sistema, como System Events y Mission Control.</string>
     <key>LSUIElement</key>
-    <false/>
+    <true/>
 </dict>
 </plist>

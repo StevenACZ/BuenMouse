@@ -58,7 +58,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        showWindow()
+        // Only show window if there's no visible window already
+        if !flag {
+            showWindow()
+        }
         return true
     }
 
