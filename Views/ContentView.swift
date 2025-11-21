@@ -30,6 +30,11 @@ struct ContentView<Settings: SettingsProtocol>: View {
                 // Appearance Settings
                 appearanceSettingsSection
 
+                Divider()
+
+                // About Section
+                aboutSection
+
                 Spacer(minLength: 20)
 
                 // Action Buttons
@@ -243,6 +248,66 @@ struct ContentView<Settings: SettingsProtocol>: View {
                     }
                 }
                 .padding(.leading, 20)
+            }
+        }
+        .padding(.horizontal, 4)
+    }
+
+    // MARK: - About Section
+    private var aboutSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("About")
+                .font(.headline)
+                .foregroundColor(.indigo)
+
+            HStack(spacing: 16) {
+                // App Logo
+                Image("AppLogo")
+                    .resizable()
+                    .frame(width: 64, height: 64)
+                    .cornerRadius(12)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("BuenMouse")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("Version 2.0")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    Text("Created by Steven Coaila Zaa")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Text("Advanced mouse gestures and productivity tools for macOS. Open source and privacy-focused.")
+                .font(.body)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Links
+            HStack(spacing: 16) {
+                Button(action: {
+                    if let url = URL(string: "https://github.com/StevenACZ/BuenMouse") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "link")
+                        Text("GitHub Repository")
+                    }
+                    .font(.subheadline)
+                }
+                .buttonStyle(.borderless)
+
+                Text("•")
+                    .foregroundColor(.secondary)
+
+                Text("MIT License")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
         }
         .padding(.horizontal, 4)
