@@ -44,6 +44,49 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         settingsManager.setupAppearanceObserver()
         settingsManager.updateAppearance()
         updateStatusBarIcon()
+
+        // CRITICAL: Force window to appear after startup
+        // This ensures the window shows even when app starts at login
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            self?.forceWindowOnStartup()
+        }
+    }
+
+    private func forceWindowOnStartup() {
+        os_log("Forcing window to show on startup...", log: .default, type: .info)
+
+        // First activate the app - this is critical
+        NSApp.activate(ignoringOtherApps: true)
+
+        // Check if we already have a window
+        if window != nil {
+            os_log("Window exists, showing it", log: .default, type: .info)
+            showWindow()
+            return
+        }
+
+        // Try to find the window
+        let allWindows = NSApp.windows
+        os_log("Found %d windows", log: .default, type: .info, allWindows.count)
+
+        for win in allWindows {
+            if let contentView = win.contentView,
+               String(describing: type(of: contentView)).contains("NSHostingView") {
+                window = win
+                os_log("Found and assigned main window", log: .default, type: .info)
+                showWindow()
+                return
+            }
+        }
+
+        // Last resort: use first window
+        if let firstWindow = allWindows.first {
+            window = firstWindow
+            os_log("Using first window as last resort", log: .default, type: .info)
+            showWindow()
+        } else {
+            os_log("ERROR: No windows found at all!", log: .default, type: .error)
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
