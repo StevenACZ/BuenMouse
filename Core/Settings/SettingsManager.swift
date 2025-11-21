@@ -13,7 +13,6 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
     }() {
         didSet {
             UserDefaults.standard.set(isMonitoringActive, forKey: "isMonitoringActive")
-            appDelegate?.updateMonitoring(isActive: isMonitoringActive)
         }
     }
 
@@ -77,12 +76,6 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
         }
     }
 
-    func moveToMenuBar() {
-        DispatchQueue.main.async {
-            self.appDelegate?.moveToMenuBar()
-            os_log("Moving to menu bar requested", log: .default, type: .info)
-        }
-    }
 
     func updateAppearance() {
         let updateBlock = {

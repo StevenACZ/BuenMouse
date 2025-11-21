@@ -47,26 +47,8 @@ struct ContentView<Settings: SettingsProtocol>: View {
         }
         .frame(minWidth: 600, idealWidth: 700, maxWidth: 900,
                minHeight: 500, idealHeight: 600, maxHeight: 800)
-        .onAppear {
-            setupKeyboardShortcuts()
-        }
     }
 
-    private func setupKeyboardShortcuts() {
-        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            // ESC key
-            if event.keyCode == 53 {
-                settings.moveToMenuBar()
-                return nil
-            }
-            // CMD+W
-            if event.keyCode == 13 && event.modifierFlags.contains(.command) {
-                settings.moveToMenuBar()
-                return nil
-            }
-            return event
-        }
-    }
 
     // MARK: - Header
     private var headerSection: some View {
@@ -355,33 +337,18 @@ struct ContentView<Settings: SettingsProtocol>: View {
 
     // MARK: - Action Buttons
     private var actionButtonsSection: some View {
-        HStack(spacing: 16) {
-            Button(action: {
-                settings.moveToMenuBar()
-            }) {
-                HStack {
-                    Image(systemName: "arrow.up.right.square")
-                    Text("Move to Menu Bar")
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+        Button(action: {
+            NSApplication.shared.terminate(nil)
+        }) {
+            HStack {
+                Image(systemName: "power")
+                Text("Quit BuenMouse")
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-
-            Button(action: {
-                NSApplication.shared.terminate(nil)
-            }) {
-                HStack {
-                    Image(systemName: "power")
-                    Text("Quit BuenMouse")
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .tint(.red)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
         }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .tint(.red)
     }
 }

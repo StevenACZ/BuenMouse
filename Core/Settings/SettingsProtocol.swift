@@ -13,6 +13,5 @@ protocol SettingsProtocol: ObservableObject {
     var followSystemAppearance: Bool { get set }
     var launchAtLogin: Bool { get set }
 
-    func moveToMenuBar()
     func resetToDefaults()
 } 
