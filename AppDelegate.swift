@@ -78,8 +78,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             menu.addItem(NSMenuItem(title: "Show Settings", action: #selector(statusItemClicked), keyEquivalent: ""))
             menu.addItem(NSMenuItem.separator())
             
-            let toggleItem = NSMenuItem(title: "Toggle Monitoring", action: #selector(toggleMonitoring), keyEquivalent: "")
+            let toggleItem = NSMenuItem(title: settingsManager.isMonitoringActive ? "Disable Monitoring" : "Enable Monitoring", action: #selector(toggleMonitoring), keyEquivalent: "")
             toggleItem.target = self
+            toggleItem.tag = 999 // Unique tag to find it later
             menu.addItem(toggleItem)
             
             menu.addItem(NSMenuItem.separator())
@@ -177,10 +178,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     
     private func updateStatusBarIcon() {
         guard let button = statusItem?.button else { return }
-        
+
         let iconName: String
         let tooltip: String
-        
+
         if settingsManager.isMonitoringActive {
             iconName = "cursorarrow"
             tooltip = "BuenMouse: Active - Click to show settings"
@@ -188,13 +189,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             iconName = "cursorarrow.slash"
             tooltip = "BuenMouse: Inactive - Click to show settings"
         }
-        
+
         button.image = NSImage(systemSymbolName: iconName, accessibilityDescription: "BuenMouse")
         button.toolTip = tooltip
-        
-        // Update menu item text
+
+        // Animate icon change with bounce effect
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+            // Scale down
+            button.animator().alphaValue = 0.5
+        }, completionHandler: {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.2
+                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+
+                // Scale back up
+                button.animator().alphaValue = 1.0
+            })
+        })
+
+        // Update menu item text using tag
         if let menu = statusItem?.menu,
-           let toggleItem = menu.item(withTitle: "Toggle Monitoring") {
+           let toggleItem = menu.item(withTag: 999) {
             toggleItem.title = settingsManager.isMonitoringActive ? "Disable Monitoring" : "Enable Monitoring"
         }
     }
