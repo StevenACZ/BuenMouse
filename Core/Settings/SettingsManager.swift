@@ -67,6 +67,16 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
         }
     }
 
+    @Published var launchAtLogin: Bool = ServiceManager.isEnabled {
+        didSet {
+            if launchAtLogin {
+                _ = ServiceManager.register()
+            } else {
+                _ = ServiceManager.unregister()
+            }
+        }
+    }
+
     func moveToMenuBar() {
         DispatchQueue.main.async {
             self.appDelegate?.moveToMenuBar()

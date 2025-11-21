@@ -18,6 +18,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     func applicationDidFinishLaunching(_ notification: Notification) {
         os_log("Application launching...", log: .default, type: .info)
 
+        // Register for launch at login
+        _ = ServiceManager.register()
+
         setupStatusBar()
         setupComponents()
         eventMonitor?.requestPermissions()

@@ -118,6 +118,17 @@ struct ContentView<Settings: SettingsProtocol>: View {
                 }
             }
             .help("Turn on/off all mouse gesture recognition")
+
+            Toggle(isOn: $settings.launchAtLogin) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Launch at Login")
+                        .font(.body)
+                    Text("Automatically start BuenMouse when you log in")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .help("Start BuenMouse automatically at system login")
         }
         .padding(.horizontal, 4)
     }
