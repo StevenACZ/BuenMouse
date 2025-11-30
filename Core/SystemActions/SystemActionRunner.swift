@@ -19,32 +19,7 @@ final class SystemActionRunner {
     static func activateMissionControl() {
         runAppleScript(source: "tell application \"Mission Control\" to launch")
     }
-    
-    // MARK: - Navigation
-    static func goBack() {
-        let source = CGEventSource(stateID: .hidSystemState)
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 123, keyDown: true)
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 123, keyDown: false)
-        
-        keyDown?.flags = .maskCommand
-        keyUp?.flags = .maskCommand
-        
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
-    }
-    
-    static func goForward() {
-        let source = CGEventSource(stateID: .hidSystemState)
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 124, keyDown: true)
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 124, keyDown: false)
-        
-        keyDown?.flags = .maskCommand
-        keyUp?.flags = .maskCommand
-        
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
-    }
-    
+
     // MARK: - Zoom
     static func zoomIn() {
         let source = CGEventSource(stateID: .hidSystemState)
