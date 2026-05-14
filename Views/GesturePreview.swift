@@ -317,6 +317,13 @@ struct GesturePreviewCard: View {
 
     @State private var phase: Double = 0
     @State private var directionToggle: Bool = false
+    @State private var rippleProgress: CGFloat = 0
+    @State private var holdClickPulse: CGFloat = 0
+    @State private var phaseTimer: Timer? = nil
+    @State private var directionTimer: Timer? = nil
+
+    private let phaseInterval: TimeInterval = 1.4
+    private let directionInterval: TimeInterval = 1.6
 
     var body: some View {
         ZStack {
@@ -336,15 +343,57 @@ struct GesturePreviewCard: View {
         .frame(maxWidth: .infinity)
         .animation(.easeInOut(duration: 0.35), value: isActive)
         .onAppear { startAnimating() }
+        .onDisappear { stopAnimating() }
     }
 
     private func startAnimating() {
-        withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
-            phase = 1.0
+        stopAnimating()
+        phaseTimer = Timer.scheduledTimer(withTimeInterval: phaseInterval, repeats: true) { _ in
+            withAnimation(.easeInOut(duration: phaseInterval)) {
+                phase = phase < 0.5 ? 1.0 : 0.0
+            }
         }
-        withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
-            directionToggle = true
+        // Kick off the first oscillation immediately, then schedule the rest.
+        runDirectionStep()
+        directionTimer = Timer.scheduledTimer(withTimeInterval: directionInterval, repeats: true) { _ in
+            runDirectionStep()
         }
+    }
+
+    /// Flip the mouse's direction and schedule a click pulse for the moment it
+    /// crosses the center, so the wave only fires while at the midpoint.
+    private func runDirectionStep() {
+        withAnimation(.easeInOut(duration: directionInterval)) {
+            directionToggle.toggle()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + directionInterval / 2) {
+            fireCenterClick()
+        }
+    }
+
+    /// Pulse the dot and emit a ripple — invoked only when the mouse is at center.
+    private func fireCenterClick() {
+        // Ripple: reset to 0 without animation, then expand + fade.
+        var snap = Transaction(animation: nil)
+        snap.disablesAnimations = true
+        withTransaction(snap) { rippleProgress = 0 }
+        withAnimation(.easeOut(duration: 0.95)) {
+            rippleProgress = 1
+        }
+        // Dot pulse: quick squish-in, soft return.
+        withAnimation(.easeOut(duration: 0.16)) {
+            holdClickPulse = 1
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
+            withAnimation(.easeInOut(duration: 0.4)) {
+                holdClickPulse = 0
+            }
+        }
+    }
+
+    private func stopAnimating() {
+        phaseTimer?.invalidate(); phaseTimer = nil
+        directionTimer?.invalidate(); directionTimer = nil
     }
 
     @ViewBuilder
@@ -383,10 +432,22 @@ struct GesturePreviewCard: View {
     private var mouseWithHold: some View {
         ZStack(alignment: .top) {
             mouse
-            Circle()
-                .fill(type.accent)
-                .frame(width: 7, height: 7)
-                .offset(y: -2)
+            ZStack {
+                // Outer wave — only emitted when the mouse passes through center.
+                Circle()
+                    .stroke(type.accent, lineWidth: 1.4)
+                    .frame(width: 8, height: 8)
+                    .scaleEffect(1 + 2.5 * rippleProgress)
+                    .opacity(Double(1 - rippleProgress))
+                // The held-click dot. Steady most of the time, with a small
+                // squish at center to convey the "click" landing.
+                Circle()
+                    .fill(type.accent)
+                    .frame(width: 8, height: 8)
+                    .scaleEffect(1.0 + 0.55 * holdClickPulse)
+                    .opacity(0.85)
+            }
+            .offset(y: 12)
         }
     }
 
@@ -410,15 +471,18 @@ struct GesturePreviewCard: View {
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(type.accent)
                 .opacity(directionToggle ? 1 : 0.25)
-                .offset(x: directionToggle ? -3 : 0)
+                .scaleEffect(directionToggle ? 1.15 : 0.9)
+                .offset(x: directionToggle ? -4 : 2)
             mouseWithHold
+                .offset(x: directionToggle ? -16 : 16)
+                .rotationEffect(.degrees(directionToggle ? -4 : 4))
             Image(systemName: "arrow.right")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(type.accent)
                 .opacity(directionToggle ? 0.25 : 1)
-                .offset(x: directionToggle ? 0 : 3)
+                .scaleEffect(directionToggle ? 0.9 : 1.15)
+                .offset(x: directionToggle ? -2 : 4)
         }
-        .animation(.easeInOut(duration: 2.2), value: directionToggle)
     }
 
     private var scrollZoom: some View {
