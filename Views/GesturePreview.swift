@@ -502,13 +502,13 @@ struct GesturePreviewCard: View {
     }
 
     private var spaceNavigation: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 30) {
             Image(systemName: "arrow.left")
                 .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(type.accent)
                 .opacity(directionToggle ? 1 : 0.25)
                 .scaleEffect(directionToggle ? 1.15 : 0.9)
-                .offset(x: directionToggle ? -4 : 2)
+                .offset(x: directionToggle ? -8 : -2)
             mouseWithHold
                 .offset(x: directionToggle ? -16 : 16)
                 .rotationEffect(.degrees(directionToggle ? -4 : 4))
@@ -517,7 +517,7 @@ struct GesturePreviewCard: View {
                 .foregroundStyle(type.accent)
                 .opacity(directionToggle ? 0.25 : 1)
                 .scaleEffect(directionToggle ? 0.9 : 1.15)
-                .offset(x: directionToggle ? -2 : 4)
+                .offset(x: directionToggle ? 2 : 8)
         }
     }
 
