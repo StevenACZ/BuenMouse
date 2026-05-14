@@ -76,26 +76,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         updateStatusBarIcon()
+        rebuildStatusBarMenu()
+    }
 
-        // Create the dropdown menu
+    /// Rebuilds the entire menu so checkmarks stay in sync with settings.
+    /// Called on every settings change that affects the menu.
+    private func rebuildStatusBarMenu() {
         let menu = NSMenu()
 
-        // Show Settings
-        let showSettingsItem = NSMenuItem(title: "Show Settings", action: #selector(showSettingsClicked), keyEquivalent: "")
+        let showSettingsItem = NSMenuItem(title: "Show Settings", action: #selector(showSettingsClicked), keyEquivalent: ",")
         showSettingsItem.target = self
         menu.addItem(showSettingsItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        // Gesture Monitoring Toggle
         let monitoringItem = NSMenuItem(title: "Gesture Monitoring", action: #selector(toggleMonitoringClicked), keyEquivalent: "")
         monitoringItem.target = self
         monitoringItem.state = settingsManager.isMonitoringActive ? .on : .off
         menu.addItem(monitoringItem)
 
+        let launchItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLoginClicked), keyEquivalent: "")
+        launchItem.target = self
+        launchItem.state = settingsManager.launchAtLogin ? .on : .off
+        menu.addItem(launchItem)
+
+        // Appearance submenu
+        let appearanceItem = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
+        let appearanceSubmenu = NSMenu(title: "Appearance")
+
+        let systemItem = NSMenuItem(title: "System", action: #selector(selectAppearanceSystem), keyEquivalent: "")
+        systemItem.target = self
+        systemItem.state = settingsManager.followSystemAppearance ? .on : .off
+        appearanceSubmenu.addItem(systemItem)
+
+        let lightItem = NSMenuItem(title: "Light", action: #selector(selectAppearanceLight), keyEquivalent: "")
+        lightItem.target = self
+        lightItem.state = (!settingsManager.followSystemAppearance && !settingsManager.isDarkMode) ? .on : .off
+        appearanceSubmenu.addItem(lightItem)
+
+        let darkItem = NSMenuItem(title: "Dark", action: #selector(selectAppearanceDark), keyEquivalent: "")
+        darkItem.target = self
+        darkItem.state = (!settingsManager.followSystemAppearance && settingsManager.isDarkMode) ? .on : .off
+        appearanceSubmenu.addItem(darkItem)
+
+        appearanceItem.submenu = appearanceSubmenu
+        menu.addItem(appearanceItem)
+
         menu.addItem(NSMenuItem.separator())
 
-        // Quit
+        let resetItem = NSMenuItem(title: "Reset to Defaults…", action: #selector(resetClicked), keyEquivalent: "")
+        resetItem.target = self
+        menu.addItem(resetItem)
+
+        let aboutItem = NSMenuItem(title: "About BuenMouse", action: #selector(aboutClicked), keyEquivalent: "")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
+
+        menu.addItem(NSMenuItem.separator())
+
         let quitItem = NSMenuItem(title: "Quit BuenMouse", action: #selector(quitClicked), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
@@ -110,17 +148,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     @objc private func toggleMonitoringClicked() {
         settingsManager.isMonitoringActive.toggle()
+        applyMonitoringChange()
+    }
 
-        // Update menu item state
-        if let menu = statusItem?.menu,
-           let monitoringItem = menu.item(withTitle: "Gesture Monitoring") {
-            monitoringItem.state = settingsManager.isMonitoringActive ? .on : .off
-        }
-
-        // Update icon
+    private func applyMonitoringChange() {
         updateStatusBarIcon()
+        rebuildStatusBarMenu()
 
-        // Start/stop monitoring
         if settingsManager.isMonitoringActive {
             eventMonitor?.startMonitoring()
         } else {
@@ -129,6 +163,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
         os_log("Monitoring toggled: %{public}@", log: .default, type: .info,
                settingsManager.isMonitoringActive ? "ON" : "OFF")
+    }
+
+    @objc private func toggleLaunchAtLoginClicked() {
+        settingsManager.launchAtLogin.toggle()
+        rebuildStatusBarMenu()
+    }
+
+    @objc private func selectAppearanceSystem() {
+        settingsManager.followSystemAppearance = true
+        rebuildStatusBarMenu()
+    }
+
+    @objc private func selectAppearanceLight() {
+        settingsManager.followSystemAppearance = false
+        settingsManager.isDarkMode = false
+        rebuildStatusBarMenu()
+    }
+
+    @objc private func selectAppearanceDark() {
+        settingsManager.followSystemAppearance = false
+        settingsManager.isDarkMode = true
+        rebuildStatusBarMenu()
+    }
+
+    @objc private func resetClicked() {
+        let alert = NSAlert()
+        alert.messageText = "Reset all settings to defaults?"
+        alert.informativeText = "This restores every BuenMouse preference. This cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+        if alert.runModal() == .alertFirstButtonReturn {
+            settingsManager.resetToDefaults()
+            rebuildStatusBarMenu()
+        }
+    }
+
+    @objc private func aboutClicked() {
+        let alert = NSAlert()
+        alert.messageText = "BuenMouse"
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        alert.informativeText = "Version \(version)\nAdvanced mouse gestures for macOS.\nCreated by Steven Coaila Zaa.\nMIT License."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "GitHub Repository")
+        if alert.runModal() == .alertSecondButtonReturn {
+            if let url = URL(string: "https://github.com/StevenACZ/BuenMouse") {
+                NSWorkspace.shared.open(url)
+            }
+        }
     }
 
     @objc private func quitClicked() {
@@ -227,12 +311,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     // Called when monitoring changes from Settings UI
     func onMonitoringChanged() {
-        updateStatusBarIcon()
-
-        // Update menu item state
-        if let menu = statusItem?.menu,
-           let monitoringItem = menu.item(withTitle: "Gesture Monitoring") {
-            monitoringItem.state = settingsManager.isMonitoringActive ? .on : .off
-        }
+        applyMonitoringChange()
     }
 }

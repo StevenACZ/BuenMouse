@@ -6,357 +6,161 @@ struct ContentView<Settings: SettingsProtocol>: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // Header
+            VStack(alignment: .leading, spacing: 22) {
                 headerSection
 
-                // Animated guide for gestures (single shared carousel)
-                GestureShowcase()
+                GestureShowcase(settings: settings)
 
                 Divider()
+                    .padding(.vertical, 4)
 
-                // General Settings
-                generalSettingsSection
-
-                Divider()
-
-                // Gesture Settings
-                gestureSettingsSection
-
-                Divider()
-
-                // Scroll Settings
-                scrollSettingsSection
-
-                Divider()
-
-                // Appearance Settings
-                appearanceSettingsSection
-
-                Divider()
-
-                // About Section
-                aboutSection
-
-                Spacer(minLength: 20)
-
-                // Reset to Defaults
-                resetSection
-
-                // Action Buttons
-                actionButtonsSection
+                AboutSection()
             }
-            .padding(32)
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+            .padding(.bottom, 28)
         }
-        .frame(minWidth: 400, idealWidth: 400, maxWidth: 600,
-               minHeight: 500, idealHeight: 600, maxHeight: 800)
+        .frame(minWidth: 450, idealWidth: 450, maxWidth: 450,
+               minHeight: 650, idealHeight: 650, maxHeight: 650)
     }
 
-
     // MARK: - Header
+
     private var headerSection: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("BuenMouse Settings")
-                    .font(.system(size: 28, weight: .bold))
-                Text("Configure your mouse gestures and preferences")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("BuenMouse")
+                    .font(.system(size: 24, weight: .bold))
+                Text("Mouse gestures for macOS")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Spacer()
 
-            // Monitoring Status Badge
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(settings.isMonitoringActive ? Color.green : Color.gray)
-                    .frame(width: 8, height: 8)
-
-                Text(settings.isMonitoringActive ? "Active" : "Inactive")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(settings.isMonitoringActive ? .green : .secondary)
+            Button(action: { settings.isMonitoringActive.toggle() }) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(settings.isMonitoringActive ? Color.green : Color.gray)
+                        .frame(width: 7, height: 7)
+                    Text(settings.isMonitoringActive ? "Active" : "Inactive")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(settings.isMonitoringActive ? .green : .secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(
+                    Capsule()
+                        .fill((settings.isMonitoringActive ? Color.green : Color.gray).opacity(0.12))
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder((settings.isMonitoringActive ? Color.green : Color.gray).opacity(0.25),
+                                      lineWidth: 1)
+                )
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(settings.isMonitoringActive ? Color.green.opacity(0.1) : Color.gray.opacity(0.1))
-            )
+            .buttonStyle(.plain)
+            .help("Click to toggle gesture monitoring")
         }
     }
+}
 
-    // MARK: - General Settings
-    private var generalSettingsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("General")
-                .font(.headline)
-                .foregroundColor(.blue)
+// MARK: - About Section
 
-            Toggle(isOn: $settings.isMonitoringActive) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Enable Gesture Monitoring")
-                        .font(.body)
-                    Text("Master switch for all gesture features")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .help("Turn on/off all mouse gesture recognition")
-
-            Toggle(isOn: $settings.launchAtLogin) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Launch at Login")
-                        .font(.body)
-                    Text("Automatically start BuenMouse when you log in")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .help("Start BuenMouse automatically at system login")
-        }
-        .padding(.horizontal, 4)
+private struct AboutSection: View {
+    private var version: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.0"
     }
 
-    // MARK: - Gesture Settings
-    private var gestureSettingsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Gestures & Navigation")
-                .font(.headline)
-                .foregroundColor(.purple)
-
-            Toggle(isOn: $settings.enableMissionControl) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Enable Mission Control")
-                        .font(.body)
-                    Text("Middle click to activate Mission Control")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .disabled(!settings.isMonitoringActive)
-            .help("Press middle mouse button to open Mission Control")
-
-            Toggle(isOn: $settings.enableSpaceNavigation) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Enable Space Navigation")
-                        .font(.body)
-                    Text("Middle drag to switch between spaces")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .disabled(!settings.isMonitoringActive)
-            .help("Hold middle mouse button and drag horizontally to switch spaces")
-
-            Toggle(isOn: $settings.invertDragDirection) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Invert Drag Direction")
-                        .font(.body)
-                    Text("Reverse horizontal drag behavior")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .disabled(!settings.isMonitoringActive || !settings.enableSpaceNavigation)
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Drag Sensitivity")
-                        .font(.body)
-                    Spacer()
-                    Text("\(Int(settings.dragThreshold)) px")
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundColor(.secondary)
-                }
-
-                Slider(value: $settings.dragThreshold, in: 0...500, step: 5)
-                    .disabled(!settings.isMonitoringActive || !settings.enableSpaceNavigation)
-
-                Text("Higher values require more movement to trigger")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.leading, 20)
-        }
-        .padding(.horizontal, 4)
-    }
-
-    // MARK: - Scroll Settings
-    private var scrollSettingsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Scroll & Zoom")
-                .font(.headline)
-                .foregroundColor(.green)
-
-            Toggle(isOn: $settings.enableScrollZoom) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Enable Ctrl + Scroll Zoom")
-                        .font(.body)
-                    Text("Use Control + scroll wheel to zoom in/out")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .disabled(!settings.isMonitoringActive)
-            .help("Hold Control key and scroll to zoom in/out")
-
-            Toggle(isOn: $settings.invertScroll) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Invert Scroll Direction")
-                        .font(.body)
-                    Text("Natural scrolling for mouse wheel")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            .disabled(!settings.isMonitoringActive)
-        }
-        .padding(.horizontal, 4)
-    }
-
-    // MARK: - Appearance Settings
-    private var appearanceSettingsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Appearance")
-                .font(.headline)
-                .foregroundColor(.orange)
-
-            Toggle(isOn: $settings.followSystemAppearance) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Follow System Appearance")
-                        .font(.body)
-                    Text("Automatically match system light/dark mode")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            if !settings.followSystemAppearance {
-                Toggle(isOn: $settings.isDarkMode) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Dark Mode")
-                            .font(.body)
-                        Text("Use dark theme")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .padding(.leading, 20)
-            }
-        }
-        .padding(.horizontal, 4)
-    }
-
-    // MARK: - About Section
-    private var aboutSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("About")
-                .font(.headline)
-                .foregroundColor(.indigo)
-
-            HStack(spacing: 16) {
-                // App Logo
+    var body: some View {
+        VStack(spacing: 14) {
+            // Hero
+            HStack(alignment: .center, spacing: 14) {
                 Image("AppLogo")
                     .resizable()
-                    .frame(width: 64, height: 64)
-                    .cornerRadius(12)
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text("BuenMouse")
-                        .font(.title2)
-                        .fontWeight(.bold)
-
-                    Text("Version 2.0")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-
-                    Text("Created by Steven Coaila Zaa")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 18, weight: .bold))
+                    Text("Version \(version)")
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                    Text("by Steven Coaila Zaa")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
+
+                Spacer()
             }
 
+            // Tagline
             Text("Advanced mouse gestures and productivity tools for macOS. Open source and privacy-focused.")
-                .font(.body)
-                .foregroundColor(.secondary)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
 
             // Links
-            HStack(spacing: 16) {
-                Button(action: {
-                    if let url = URL(string: "https://github.com/StevenACZ/BuenMouse") {
-                        NSWorkspace.shared.open(url)
-                    }
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "link")
-                        Text("GitHub Repository")
-                    }
-                    .font(.subheadline)
-                }
-                .buttonStyle(.borderless)
+            HStack(spacing: 10) {
+                linkButton(label: "GitHub", systemImage: "chevron.left.forwardslash.chevron.right",
+                           url: "https://github.com/StevenACZ/BuenMouse")
+                linkButton(label: "Report Issue", systemImage: "exclamationmark.bubble",
+                           url: "https://github.com/StevenACZ/BuenMouse/issues/new")
+            }
 
-                Text("•")
-                    .foregroundColor(.secondary)
-
+            // Footer
+            HStack(spacing: 6) {
+                Image(systemName: "doc.text")
+                    .font(.system(size: 10))
                 Text("MIT License")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                Text("·")
+                Text("Made on macOS")
             }
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
         }
-        .padding(.horizontal, 4)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.secondary.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color.secondary.opacity(0.12), lineWidth: 1)
+        )
     }
 
-    // MARK: - Reset Section
-    private var resetSection: some View {
-        Button(action: {
-            settings.resetToDefaults()
-        }) {
-            HStack {
-                Image(systemName: "arrow.counterclockwise")
-                Text("Reset All Settings to Defaults")
+    private func linkButton(label: String, systemImage: String, url: String) -> some View {
+        Button(action: { open(url) }) {
+            HStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 11, weight: .semibold))
+                Text(label)
+                    .font(.system(size: 12, weight: .medium))
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.secondary.opacity(0.10))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(Color.secondary.opacity(0.18), lineWidth: 1)
+            )
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
-        .tint(.orange)
-        .help("Restore all settings to their default values")
+        .buttonStyle(.plain)
+        .help(url)
     }
 
-    // MARK: - Action Buttons
-    private var actionButtonsSection: some View {
-        VStack(spacing: 12) {
-            Button(action: {
-                // Hide the window
-                NSApp.keyWindow?.orderOut(nil)
-            }) {
-                HStack {
-                    Image(systemName: "eye.slash")
-                    Text("Hide Window")
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .tint(.blue)
-
-            Button(action: {
-                NSApplication.shared.terminate(nil)
-            }) {
-                HStack {
-                    Image(systemName: "power")
-                    Text("Quit BuenMouse")
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            .tint(.red)
-        }
+    private func open(_ urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        NSWorkspace.shared.open(url)
     }
 }

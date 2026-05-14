@@ -40,16 +40,42 @@ enum GesturePreviewType: CaseIterable {
 
 /// Auto-rotating carousel that demonstrates each gesture one at a time.
 /// Placed once at the top of ContentView so toggles below stay clean.
-struct GestureShowcase: View {
+struct GestureShowcase<Settings: SettingsProtocol>: View {
+    @ObservedObject var settings: Settings
+
     private let items = GesturePreviewType.allCases
     private let autoAdvanceSeconds: TimeInterval = 4.5
-    private let pauseAfterInteraction: TimeInterval = 10
+    private let pauseAfterInteraction: TimeInterval = 30
 
     @State private var index: Int = 0
     @State private var autoTimer: Timer? = nil
     @State private var resumeTimer: Timer? = nil
+    @State private var cardPressed: Bool = false
 
     private var current: GesturePreviewType { items[index] }
+
+    /// Binds the current slide to the matching settings property.
+    private var currentBinding: Binding<Bool> {
+        switch current {
+        case .missionControl:  return $settings.enableMissionControl
+        case .spaceNavigation: return $settings.enableSpaceNavigation
+        case .scrollZoom:      return $settings.enableScrollZoom
+        case .invertScroll:    return $settings.invertScroll
+        }
+    }
+
+    private var canToggle: Bool { settings.isMonitoringActive }
+    private var isCurrentOn: Bool { canToggle && currentBinding.wrappedValue }
+
+    private func isEnabled(_ type: GesturePreviewType) -> Bool {
+        guard settings.isMonitoringActive else { return false }
+        switch type {
+        case .missionControl:  return settings.enableMissionControl
+        case .spaceNavigation: return settings.enableSpaceNavigation
+        case .scrollZoom:      return settings.enableScrollZoom
+        case .invertScroll:    return settings.invertScroll
+        }
+    }
 
     var body: some View {
         VStack(spacing: 14) {
@@ -70,15 +96,39 @@ struct GestureShowcase: View {
             }
             .animation(.easeInOut(duration: 0.35), value: index)
 
-            ZStack {
-                ForEach(Array(items.enumerated()), id: \.offset) { offset, type in
-                    GesturePreviewCard(type: type)
-                        .opacity(offset == index ? 1 : 0)
-                        .scaleEffect(offset == index ? 1 : 0.97)
+            ZStack(alignment: .topTrailing) {
+                ZStack {
+                    ForEach(Array(items.enumerated()), id: \.offset) { offset, type in
+                        GesturePreviewCard(type: type, isActive: isEnabled(type))
+                            .opacity(offset == index ? 1 : 0)
+                            .scaleEffect(offset == index ? 1 : 0.97)
+                    }
                 }
+                .frame(height: 96)
+                .animation(.easeInOut(duration: 0.4), value: index)
+
+                statusBadge
+                    .padding(10)
+                    .animation(.easeInOut(duration: 0.25), value: isCurrentOn)
+                    .animation(.easeInOut(duration: 0.35), value: index)
             }
-            .frame(height: 96)
-            .animation(.easeInOut(duration: 0.4), value: index)
+            .scaleEffect(cardPressed ? 0.97 : 1)
+            .animation(.spring(response: 0.28, dampingFraction: 0.6), value: cardPressed)
+            .contentShape(Rectangle())
+            .onTapGesture { handleCardTap() }
+            .help(canToggle
+                  ? "Tap to \(isCurrentOn ? "disable" : "enable") this gesture"
+                  : "Turn on Gesture Monitoring to enable")
+
+            // No inline toggles — the On/Off badge plus card-tap handle activation.
+            // Space Navigation's extras (slider + invert drag) appear only when ON.
+            if current == .spaceNavigation && settings.enableSpaceNavigation {
+                spaceNavExtras
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .move(edge: .top)).combined(with: .scale(scale: 0.97, anchor: .top)),
+                        removal: .opacity.combined(with: .move(edge: .top))
+                    ))
+            }
 
             HStack(spacing: 14) {
                 navButton(systemName: "chevron.left") { step(-1) }
@@ -99,8 +149,108 @@ struct GestureShowcase: View {
             .padding(.top, 2)
         }
         .padding(.vertical, 4)
+        .animation(.easeInOut(duration: 0.3), value: settings.enableSpaceNavigation)
+        .animation(.easeInOut(duration: 0.3), value: current)
         .onAppear { startAutoTimer() }
         .onDisappear { stopAllTimers() }
+    }
+
+
+    @ViewBuilder
+    private var spaceNavExtras: some View {
+        let extrasDisabled = !canToggle || !settings.enableSpaceNavigation
+        VStack(spacing: 10) {
+            HStack {
+                Text("Drag distance to switch")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("\(Int(settings.dragThreshold)) px")
+                    .font(.system(.caption, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(extrasDisabled ? .secondary : .primary)
+                    .contentTransition(.numericText())
+                    .animation(.easeOut(duration: 0.2), value: settings.dragThreshold)
+            }
+
+            Slider(
+                value: $settings.dragThreshold,
+                in: 0...400,
+                step: 100,
+                onEditingChanged: { editing in
+                    if editing { pauseAndScheduleResume() }
+                }
+            )
+            .tint(current.accent)
+            .disabled(extrasDisabled)
+
+            GeometryReader { geo in
+                // Native SwiftUI macOS Slider has ~8pt thumb inset on each side,
+                // so position labels against the actual thumb travel range.
+                let inset: CGFloat = 8
+                let trackWidth = max(0, geo.size.width - 2 * inset)
+                ForEach([0, 100, 200, 300, 400], id: \.self) { tick in
+                    let frac = CGFloat(tick) / 400
+                    tickLabel(tick)
+                        .fixedSize()
+                        .position(x: inset + trackWidth * frac, y: 8)
+                }
+            }
+            .frame(height: 16)
+            .animation(.easeInOut(duration: 0.2), value: settings.dragThreshold)
+
+            Toggle("Invert Drag Direction", isOn: Binding(
+                get: { settings.invertDragDirection },
+                set: { newValue in
+                    settings.invertDragDirection = newValue
+                    pauseAndScheduleResume()
+                }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .padding(.top, 4)
+            .disabled(extrasDisabled)
+        }
+        .padding(.horizontal, 4)
+    }
+
+    private var statusBadge: some View {
+        let on = isCurrentOn
+        return HStack(spacing: 5) {
+            Circle()
+                .fill(on ? current.accent : Color.secondary.opacity(0.5))
+                .frame(width: 6, height: 6)
+            Text(on ? "On" : "Off")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(on ? current.accent : .secondary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule(style: .continuous)
+                .fill(on ? current.accent.opacity(0.15) : Color.secondary.opacity(0.12))
+        )
+    }
+
+    private func tickLabel(_ tick: Int) -> some View {
+        let isActive = Int(settings.dragThreshold) == tick
+        return Text("\(tick)")
+            .font(.caption2)
+            .monospacedDigit()
+            .foregroundStyle(isActive ? AnyShapeStyle(current.accent) : AnyShapeStyle(HierarchicalShapeStyle.tertiary))
+            .fontWeight(isActive ? .semibold : .regular)
+    }
+
+    private func handleCardTap() {
+        guard canToggle else {
+            pauseAndScheduleResume()
+            return
+        }
+        cardPressed = true
+        currentBinding.wrappedValue.toggle()
+        pauseAndScheduleResume()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            cardPressed = false
+        }
     }
 
     private func navButton(systemName: String, action: @escaping () -> Void) -> some View {
@@ -163,6 +313,7 @@ struct GestureShowcase: View {
 
 struct GesturePreviewCard: View {
     let type: GesturePreviewType
+    var isActive: Bool = true
 
     @State private var phase: Double = 0
     @State private var directionToggle: Bool = false
@@ -170,16 +321,20 @@ struct GesturePreviewCard: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(type.accent.opacity(0.08))
+                .fill((isActive ? type.accent : Color.gray).opacity(0.08))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .strokeBorder(type.accent.opacity(0.20), lineWidth: 1)
+                        .strokeBorder((isActive ? type.accent : Color.gray).opacity(0.20), lineWidth: 1)
                 )
 
             content
                 .padding(.vertical, 12)
+                .grayscale(isActive ? 0 : 1)
+                .saturation(isActive ? 1 : 0)
+                .opacity(isActive ? 1 : 0.55)
         }
         .frame(maxWidth: .infinity)
+        .animation(.easeInOut(duration: 0.35), value: isActive)
         .onAppear { startAnimating() }
     }
 
@@ -339,6 +494,31 @@ struct GesturePreviewCard: View {
     }
 }
 
-#Preview("Showcase") {
-    GestureShowcase().padding(32).frame(width: 460)
+// MARK: - Preview support
+
+#if DEBUG
+final class PreviewSettings: SettingsProtocol {
+    @Published var isMonitoringActive: Bool = true
+    @Published var invertDragDirection: Bool = false
+    @Published var dragThreshold: Double = 40
+    @Published var invertScroll: Bool = false
+    @Published var enableScrollZoom: Bool = false
+    @Published var enableMissionControl: Bool = true
+    @Published var enableSpaceNavigation: Bool = true
+    @Published var isDarkMode: Bool = false
+    @Published var followSystemAppearance: Bool = true
+    @Published var launchAtLogin: Bool = false
+
+    func resetToDefaults() {}
 }
+
+#Preview("Full Settings") {
+    ContentView(settings: PreviewSettings())
+}
+
+#Preview("Showcase only") {
+    GestureShowcase(settings: PreviewSettings())
+        .padding(32)
+        .frame(width: 450)
+}
+#endif

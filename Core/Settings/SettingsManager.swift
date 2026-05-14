@@ -22,8 +22,11 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
     }
 
     @Published var dragThreshold: Double = {
-        let value = UserDefaults.standard.double(forKey: "dragThreshold")
-        return value == 0 ? 40.0 : value
+        // Use object(forKey:) so we can tell "never set" (nil) apart from a legit stored 0.
+        if let stored = UserDefaults.standard.object(forKey: "dragThreshold") as? Double {
+            return min(400, max(0, stored))
+        }
+        return 100.0
     }() {
         didSet { UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold") }
     }
@@ -120,7 +123,7 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
 
         isMonitoringActive = true
         invertDragDirection = false
-        dragThreshold = 40.0
+        dragThreshold = 100.0
         invertScroll = false
         enableScrollZoom = false
         enableMissionControl = true
