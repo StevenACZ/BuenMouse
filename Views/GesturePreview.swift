@@ -44,7 +44,7 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
 
     private let items = GesturePreviewType.allCases
-    private let autoAdvanceSeconds: TimeInterval = 4.5
+    private let autoAdvanceSeconds: TimeInterval = 10
     private let pauseAfterInteraction: TimeInterval = 30
 
     @State private var index: Int = 0
@@ -315,15 +315,15 @@ struct GesturePreviewCard: View {
     let type: GesturePreviewType
     var isActive: Bool = true
 
-    @State private var phase: Double = 0
     @State private var directionToggle: Bool = false
     @State private var rippleProgress: CGFloat = 0
-    @State private var holdClickPulse: CGFloat = 0
-    @State private var phaseTimer: Timer? = nil
+    @State private var clickPulse: CGFloat = 0
+    @State private var missionGlyphSpread: CGFloat = 0
     @State private var directionTimer: Timer? = nil
+    @State private var clickTimer: Timer? = nil
 
-    private let phaseInterval: TimeInterval = 1.4
     private let directionInterval: TimeInterval = 1.6
+    private let clickInterval: TimeInterval = 1.6
 
     var body: some View {
         ZStack {
@@ -348,15 +348,23 @@ struct GesturePreviewCard: View {
 
     private func startAnimating() {
         stopAnimating()
-        phaseTimer = Timer.scheduledTimer(withTimeInterval: phaseInterval, repeats: true) { _ in
-            withAnimation(.easeInOut(duration: phaseInterval)) {
-                phase = phase < 0.5 ? 1.0 : 0.0
+        switch type {
+        case .missionControl:
+            fireMissionClick()
+            clickTimer = Timer.scheduledTimer(withTimeInterval: clickInterval, repeats: true) { _ in
+                fireMissionClick()
             }
-        }
-        // Kick off the first oscillation immediately, then schedule the rest.
-        runDirectionStep()
-        directionTimer = Timer.scheduledTimer(withTimeInterval: directionInterval, repeats: true) { _ in
+        case .spaceNavigation:
             runDirectionStep()
+            directionTimer = Timer.scheduledTimer(withTimeInterval: directionInterval, repeats: true) { _ in
+                runDirectionStep()
+            }
+        case .scrollZoom, .invertScroll:
+            directionTimer = Timer.scheduledTimer(withTimeInterval: directionInterval, repeats: true) { _ in
+                withAnimation(.easeInOut(duration: directionInterval)) {
+                    directionToggle.toggle()
+                }
+            }
         }
     }
 
@@ -367,33 +375,40 @@ struct GesturePreviewCard: View {
             directionToggle.toggle()
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + directionInterval / 2) {
-            fireCenterClick()
+            fireClickPulse()
         }
     }
 
-    /// Pulse the dot and emit a ripple — invoked only when the mouse is at center.
-    private func fireCenterClick() {
-        // Ripple: reset to 0 without animation, then expand + fade.
+    /// Fires a click for Mission Control: pulse + ripple + toggle the glyph spread
+    /// so the three rectangles separate and rejoin on alternating clicks.
+    private func fireMissionClick() {
+        fireClickPulse()
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
+            missionGlyphSpread = missionGlyphSpread > 0.5 ? 0 : 1
+        }
+    }
+
+    /// Pulse the dot and emit a ripple — the visible "click registered" cue.
+    private func fireClickPulse() {
         var snap = Transaction(animation: nil)
         snap.disablesAnimations = true
         withTransaction(snap) { rippleProgress = 0 }
         withAnimation(.easeOut(duration: 0.95)) {
             rippleProgress = 1
         }
-        // Dot pulse: quick squish-in, soft return.
         withAnimation(.easeOut(duration: 0.16)) {
-            holdClickPulse = 1
+            clickPulse = 1
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
             withAnimation(.easeInOut(duration: 0.4)) {
-                holdClickPulse = 0
+                clickPulse = 0
             }
         }
     }
 
     private func stopAnimating() {
-        phaseTimer?.invalidate(); phaseTimer = nil
         directionTimer?.invalidate(); directionTimer = nil
+        clickTimer?.invalidate(); clickTimer = nil
     }
 
     @ViewBuilder
@@ -418,37 +433,60 @@ struct GesturePreviewCard: View {
     }
 
     private var mouseWithClick: some View {
-        ZStack(alignment: .top) {
-            mouse
-            Circle()
-                .fill(type.accent)
-                .frame(width: 9, height: 9)
-                .scaleEffect(1.0 + 0.5 * phase)
-                .opacity(0.85 - 0.25 * phase)
-                .offset(y: -4)
-        }
+        clickIndicatorMouse
     }
 
     private var mouseWithHold: some View {
+        clickIndicatorMouse
+    }
+
+    /// Shared mouse + centered click indicator: a dot that squishes on click,
+    /// with an outer ring that expands and fades as the "click wave".
+    private var clickIndicatorMouse: some View {
         ZStack(alignment: .top) {
             mouse
             ZStack {
-                // Outer wave — only emitted when the mouse passes through center.
                 Circle()
                     .stroke(type.accent, lineWidth: 1.4)
                     .frame(width: 8, height: 8)
                     .scaleEffect(1 + 2.5 * rippleProgress)
                     .opacity(Double(1 - rippleProgress))
-                // The held-click dot. Steady most of the time, with a small
-                // squish at center to convey the "click" landing.
                 Circle()
                     .fill(type.accent)
                     .frame(width: 8, height: 8)
-                    .scaleEffect(1.0 + 0.55 * holdClickPulse)
+                    .scaleEffect(1.0 + 0.55 * clickPulse)
                     .opacity(0.85)
             }
             .offset(y: 12)
         }
+    }
+
+    /// Mission Control glyph approximating `rectangle.3.group.fill`. The 3
+    /// rectangles separate when `missionGlyphSpread` = 1 and rejoin at 0.
+    private var missionGlyph: some View {
+        let leftWidth: CGFloat = 13
+        let leftHeight: CGFloat = 28
+        let rightWidth: CGFloat = 11
+        let rightHeight: CGFloat = 11
+        let horizontalGap: CGFloat = 2 + 5 * missionGlyphSpread
+        let verticalGap: CGFloat = 5 + 6 * missionGlyphSpread
+
+        return HStack(spacing: horizontalGap) {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(type.accent)
+                .frame(width: leftWidth, height: leftHeight)
+                .offset(x: -2 * missionGlyphSpread)
+            VStack(spacing: verticalGap) {
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(type.accent)
+                    .frame(width: rightWidth, height: rightHeight)
+                RoundedRectangle(cornerRadius: 2, style: .continuous)
+                    .fill(type.accent)
+                    .frame(width: rightWidth, height: rightHeight)
+            }
+            .offset(x: 2 * missionGlyphSpread)
+        }
+        .frame(height: leftHeight)
     }
 
     // MARK: Variants
@@ -459,9 +497,7 @@ struct GesturePreviewCard: View {
             Image(systemName: "arrow.right")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(type.accent.opacity(0.7))
-            Image(systemName: "rectangle.3.group.fill")
-                .font(.system(size: 30))
-                .foregroundStyle(type.accent)
+            missionGlyph
         }
     }
 
