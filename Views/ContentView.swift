@@ -10,6 +10,9 @@ struct ContentView<Settings: SettingsProtocol>: View {
                 // Header
                 headerSection
 
+                // Animated guide for gestures (single shared carousel)
+                GestureShowcase()
+
                 Divider()
 
                 // General Settings
@@ -197,18 +200,6 @@ struct ContentView<Settings: SettingsProtocol>: View {
             }
             .disabled(!settings.isMonitoringActive)
             .help("Hold Control key and scroll to zoom in/out")
-
-            if settings.enableScrollZoom {
-                HStack(spacing: 8) {
-                    Image(systemName: "info.circle")
-                        .foregroundColor(.blue)
-                        .font(.caption)
-                    Text("Hold ⌃ Control and scroll to zoom")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.leading, 20)
-            }
 
             Toggle(isOn: $settings.invertScroll) {
                 VStack(alignment: .leading, spacing: 4) {
