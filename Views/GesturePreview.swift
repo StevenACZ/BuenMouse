@@ -565,25 +565,32 @@ struct GesturePreviewCard: View {
 
     private var invertScroll: some View {
         HStack(spacing: 22) {
-            ZStack(alignment: .top) {
+            ZStack {
                 mouse
-                Image(systemName: directionToggle ? "chevron.down" : "chevron.up")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(type.accent)
-                    .offset(y: -8)
-                    .animation(.easeInOut(duration: 1.4), value: directionToggle)
+                VStack(spacing: 1) {
+                    Image(systemName: "chevron.up")
+                        .opacity(directionToggle ? 0.18 : 1)
+                        .scaleEffect(directionToggle ? 0.7 : 1.35, anchor: .bottom)
+                        .offset(y: directionToggle ? 1 : -3)
+                    Image(systemName: "chevron.down")
+                        .opacity(directionToggle ? 1 : 0.18)
+                        .scaleEffect(directionToggle ? 1.35 : 0.7, anchor: .top)
+                        .offset(y: directionToggle ? 3 : -1)
+                }
+                .font(.system(size: 15, weight: .heavy))
+                .foregroundStyle(type.accent)
+                .offset(y: -8)
             }
             Image(systemName: "arrow.right")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(type.accent.opacity(0.7))
-            VStack(spacing: 4) {
-                Image(systemName: directionToggle ? "arrow.up" : "arrow.down")
-                    .font(.system(size: 13, weight: .bold))
-                Image(systemName: "doc.richtext")
-                    .font(.system(size: 18))
-            }
-            .foregroundStyle(type.accent)
-            .animation(.easeInOut(duration: 1.4), value: directionToggle)
+            // Page indicator: the document slides in the same direction as the
+            // wheel — i.e., scroll wheel down → page goes down (natural/inverted).
+            Image(systemName: "doc.richtext.fill")
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(type.accent)
+                .offset(y: directionToggle ? 10 : -10)
+                .scaleEffect(directionToggle ? 1.05 : 0.95)
         }
     }
 
