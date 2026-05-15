@@ -325,6 +325,12 @@ struct GesturePreviewCard: View {
     private let directionInterval: TimeInterval = 1.6
     private let clickInterval: TimeInterval = 1.6
 
+    /// Animation speed multiplier — slows everything down when the gesture is
+    /// disabled so the card feels "dormant" alongside the desaturated look.
+    private var slowFactor: Double { isActive ? 1.0 : 3.5 }
+    private var dirInt: TimeInterval { directionInterval * slowFactor }
+    private var clickInt: TimeInterval { clickInterval * slowFactor }
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -343,6 +349,7 @@ struct GesturePreviewCard: View {
         .frame(maxWidth: .infinity)
         .animation(.easeInOut(duration: 0.35), value: isActive)
         .onAppear { startAnimating() }
+        .onChange(of: isActive) { _, _ in startAnimating() }
         .onDisappear { stopAnimating() }
     }
 
@@ -351,17 +358,17 @@ struct GesturePreviewCard: View {
         switch type {
         case .missionControl:
             fireMissionClick()
-            clickTimer = Timer.scheduledTimer(withTimeInterval: clickInterval, repeats: true) { _ in
+            clickTimer = Timer.scheduledTimer(withTimeInterval: clickInt, repeats: true) { _ in
                 fireMissionClick()
             }
         case .spaceNavigation:
             runDirectionStep()
-            directionTimer = Timer.scheduledTimer(withTimeInterval: directionInterval, repeats: true) { _ in
+            directionTimer = Timer.scheduledTimer(withTimeInterval: dirInt, repeats: true) { _ in
                 runDirectionStep()
             }
         case .scrollZoom, .invertScroll:
-            directionTimer = Timer.scheduledTimer(withTimeInterval: directionInterval, repeats: true) { _ in
-                withAnimation(.easeInOut(duration: directionInterval)) {
+            directionTimer = Timer.scheduledTimer(withTimeInterval: dirInt, repeats: true) { [dirInt] _ in
+                withAnimation(.easeInOut(duration: dirInt)) {
                     directionToggle.toggle()
                 }
             }
@@ -371,10 +378,11 @@ struct GesturePreviewCard: View {
     /// Flip the mouse's direction and schedule a click pulse for the moment it
     /// crosses the center, so the wave only fires while at the midpoint.
     private func runDirectionStep() {
-        withAnimation(.easeInOut(duration: directionInterval)) {
+        let duration = dirInt
+        withAnimation(.easeInOut(duration: duration)) {
             directionToggle.toggle()
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + directionInterval / 2) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration / 2) {
             fireClickPulse()
         }
     }
@@ -383,24 +391,25 @@ struct GesturePreviewCard: View {
     /// so the three rectangles separate and rejoin on alternating clicks.
     private func fireMissionClick() {
         fireClickPulse()
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
+        withAnimation(.spring(response: 0.5 * slowFactor, dampingFraction: 0.65)) {
             missionGlyphSpread = missionGlyphSpread > 0.5 ? 0 : 1
         }
     }
 
     /// Pulse the dot and emit a ripple — the visible "click registered" cue.
     private func fireClickPulse() {
+        let factor = slowFactor
         var snap = Transaction(animation: nil)
         snap.disablesAnimations = true
         withTransaction(snap) { rippleProgress = 0 }
-        withAnimation(.easeOut(duration: 0.95)) {
+        withAnimation(.easeOut(duration: 0.95 * factor)) {
             rippleProgress = 1
         }
-        withAnimation(.easeOut(duration: 0.16)) {
+        withAnimation(.easeOut(duration: 0.16 * factor)) {
             clickPulse = 1
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) {
-            withAnimation(.easeInOut(duration: 0.4)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16 * factor) {
+            withAnimation(.easeInOut(duration: 0.4 * factor)) {
                 clickPulse = 0
             }
         }
@@ -527,28 +536,30 @@ struct GesturePreviewCard: View {
             Text("+")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.secondary)
-            ZStack(alignment: .top) {
+            ZStack {
                 mouse
-                VStack(spacing: 2) {
+                VStack(spacing: 1) {
                     Image(systemName: "chevron.up")
-                        .opacity(directionToggle ? 1 : 0.3)
-                        .scaleEffect(directionToggle ? 1.1 : 0.9)
+                        .opacity(directionToggle ? 1 : 0.18)
+                        .scaleEffect(directionToggle ? 1.35 : 0.7, anchor: .bottom)
+                        .offset(y: directionToggle ? -3 : 1)
                     Image(systemName: "chevron.down")
-                        .opacity(directionToggle ? 0.3 : 1)
-                        .scaleEffect(directionToggle ? 0.9 : 1.1)
+                        .opacity(directionToggle ? 0.18 : 1)
+                        .scaleEffect(directionToggle ? 0.7 : 1.35, anchor: .top)
+                        .offset(y: directionToggle ? -1 : 3)
                 }
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: 15, weight: .heavy))
                 .foregroundStyle(type.accent)
-                .offset(y: -10)
-                .animation(.easeInOut(duration: 2.2), value: directionToggle)
+                .offset(y: -8)
             }
             Image(systemName: "arrow.right")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(type.accent.opacity(0.7))
             Image(systemName: directionToggle ? "plus.magnifyingglass" : "minus.magnifyingglass")
-                .font(.system(size: 24))
+                .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(type.accent)
-                .animation(.easeInOut(duration: 2.2), value: directionToggle)
+                .scaleEffect(directionToggle ? 1.35 : 0.75)
+                .rotationEffect(.degrees(directionToggle ? -6 : 6))
         }
     }
 
