@@ -4,9 +4,9 @@ import SwiftUI
 
 enum GesturePreviewType: CaseIterable {
     case missionControl
-    case spaceNavigation
     case scrollZoom
     case invertScroll
+    case spaceNavigation
 
     var title: String {
         switch self {
@@ -42,6 +42,9 @@ enum GesturePreviewType: CaseIterable {
 /// Placed once at the top of ContentView so toggles below stay clean.
 struct GestureShowcase<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
+    /// Lets the parent know which slide is on screen so it can adjust the
+    /// surrounding layout (e.g. center short slides, top-align the long one).
+    var onSlideChange: ((GesturePreviewType) -> Void)? = nil
 
     private let items = GesturePreviewType.allCases
     private let autoAdvanceSeconds: TimeInterval = 10
@@ -155,7 +158,11 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
         .padding(.vertical, 4)
         .animation(.easeInOut(duration: 0.3), value: settings.enableSpaceNavigation)
         .animation(.easeInOut(duration: 0.3), value: current)
-        .onAppear { startAutoTimer() }
+        .onAppear {
+            startAutoTimer()
+            onSlideChange?(current)
+        }
+        .onChange(of: index) { _, _ in onSlideChange?(current) }
         .onDisappear { stopAllTimers() }
     }
 
@@ -163,8 +170,8 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
     @ViewBuilder
     private var spaceNavExtras: some View {
         let extrasDisabled = !canToggle || !settings.enableSpaceNavigation
-        VStack(spacing: 10) {
-            HStack {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Text("Drag distance to switch")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -174,6 +181,25 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
                     .foregroundStyle(extrasDisabled ? .secondary : .primary)
                     .contentTransition(.numericText())
                     .animation(.easeOut(duration: 0.2), value: settings.dragThreshold)
+
+                Toggle(isOn: Binding(
+                    get: { settings.invertDragDirection },
+                    set: { newValue in
+                        settings.invertDragDirection = newValue
+                        pauseAndScheduleResume()
+                    }
+                )) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text("Invert")
+                            .font(.caption)
+                    }
+                }
+                .toggleStyle(.button)
+                .controlSize(.small)
+                .disabled(extrasDisabled)
+                .help("Reverse the drag direction")
             }
 
             Slider(
@@ -185,33 +211,6 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
                 }
             )
             .tint(current.accent)
-            .disabled(extrasDisabled)
-
-            GeometryReader { geo in
-                // Native SwiftUI macOS Slider has ~8pt thumb inset on each side,
-                // so position labels against the actual thumb travel range.
-                let inset: CGFloat = 8
-                let trackWidth = max(0, geo.size.width - 2 * inset)
-                ForEach([50, 100, 150, 200, 250], id: \.self) { tick in
-                    let frac = CGFloat(tick - 50) / 200
-                    tickLabel(tick)
-                        .fixedSize()
-                        .position(x: inset + trackWidth * frac, y: 8)
-                }
-            }
-            .frame(height: 16)
-            .animation(.easeInOut(duration: 0.2), value: settings.dragThreshold)
-
-            Toggle("Invert Drag Direction", isOn: Binding(
-                get: { settings.invertDragDirection },
-                set: { newValue in
-                    settings.invertDragDirection = newValue
-                    pauseAndScheduleResume()
-                }
-            ))
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .padding(.top, 4)
             .disabled(extrasDisabled)
         }
         .padding(.horizontal, 4)
@@ -233,15 +232,6 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
             Capsule(style: .continuous)
                 .fill(on ? current.accent.opacity(0.15) : Color.secondary.opacity(0.12))
         )
-    }
-
-    private func tickLabel(_ tick: Int) -> some View {
-        let isActive = Int(settings.dragThreshold) == tick
-        return Text("\(tick)")
-            .font(.caption2)
-            .monospacedDigit()
-            .foregroundStyle(isActive ? AnyShapeStyle(current.accent) : AnyShapeStyle(HierarchicalShapeStyle.tertiary))
-            .fontWeight(isActive ? .semibold : .regular)
     }
 
     private func handleCardTap() {

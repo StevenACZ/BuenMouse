@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     // MARK: - Status Bar
     private var statusItem: NSStatusItem?
     private var mainWindow: NSWindow?
+    private var aboutWindow: NSWindow?
 
     override init() {
         super.init()
@@ -201,18 +202,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     @objc private func aboutClicked() {
-        let alert = NSAlert()
-        alert.messageText = "BuenMouse"
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-        alert.informativeText = "Version \(version)\nAdvanced mouse gestures for macOS.\nCreated by Steven Coaila Zaa.\nMIT License."
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
-        alert.addButton(withTitle: "GitHub Repository")
-        if alert.runModal() == .alertSecondButtonReturn {
-            if let url = URL(string: "https://github.com/StevenACZ/BuenMouse") {
-                NSWorkspace.shared.open(url)
-            }
+        showAboutWindow()
+    }
+
+    private func showAboutWindow() {
+        if let window = aboutWindow {
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+            return
         }
+
+        let hosting = NSHostingController(rootView: AboutView())
+        let window = NSWindow(contentViewController: hosting)
+        window.title = "About BuenMouse"
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.setFrameAutosaveName("BuenMouseAboutWindow")
+
+        aboutWindow = window
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
     }
 
     @objc private func quitClicked() {
