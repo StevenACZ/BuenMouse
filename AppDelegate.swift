@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var statusItem: NSStatusItem?
     private var mainWindow: NSWindow?
     private var aboutWindow: NSWindow?
+    private var permissionWindowController: PermissionWindowController?
 
     override init() {
         super.init()
@@ -30,9 +31,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
         setupComponents()
         setupStatusBar()
-        eventMonitor?.requestPermissions()
 
-        if settingsManager.isMonitoringActive {
+        // Guided permission onboarding. Skip the raw system prompt — the new
+        // window opens System Settings and supports drag-to-add.
+        if !AccessibilityPermission.isGranted {
+            showPermissionOnboarding()
+        } else if settingsManager.isMonitoringActive {
             eventMonitor?.startMonitoring()
         }
 
@@ -64,6 +68,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             showWindow()
         }
         return true
+    }
+
+    // MARK: - Permission Onboarding
+
+    private func showPermissionOnboarding() {
+        if permissionWindowController == nil {
+            let controller = PermissionWindowController()
+            controller.onPermissionGranted = { [weak self] in
+                self?.handlePermissionGranted()
+            }
+            permissionWindowController = controller
+        }
+        permissionWindowController?.show()
+    }
+
+    private func handlePermissionGranted() {
+        os_log("Accessibility permission granted — starting monitoring", log: .default, type: .info)
+
+        if settingsManager.isMonitoringActive {
+            eventMonitor?.startMonitoring()
+            updateStatusBarIcon()
+        }
+
+        // Give the user 1 s to see the "You're all set!" success state, then close.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.permissionWindowController?.close()
+            self?.permissionWindowController = nil
+        }
     }
 
     private func setupComponents() {
