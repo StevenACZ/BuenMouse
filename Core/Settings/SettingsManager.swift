@@ -24,7 +24,7 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
     @Published var dragThreshold: Double = {
         // Use object(forKey:) so we can tell "never set" (nil) apart from a legit stored 0.
         if let stored = UserDefaults.standard.object(forKey: "dragThreshold") as? Double {
-            return min(400, max(0, stored))
+            return min(250, max(50, stored))
         }
         return 100.0
     }() {

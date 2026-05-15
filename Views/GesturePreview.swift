@@ -99,9 +99,13 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
             ZStack(alignment: .topTrailing) {
                 ZStack {
                     ForEach(Array(items.enumerated()), id: \.offset) { offset, type in
-                        GesturePreviewCard(type: type, isActive: isEnabled(type))
-                            .opacity(offset == index ? 1 : 0)
-                            .scaleEffect(offset == index ? 1 : 0.97)
+                        GesturePreviewCard(
+                            type: type,
+                            isActive: isEnabled(type),
+                            inverted: type == .spaceNavigation && settings.invertDragDirection
+                        )
+                        .opacity(offset == index ? 1 : 0)
+                        .scaleEffect(offset == index ? 1 : 0.97)
                     }
                 }
                 .frame(height: 96)
@@ -174,8 +178,8 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
 
             Slider(
                 value: $settings.dragThreshold,
-                in: 0...400,
-                step: 100,
+                in: 50...250,
+                step: 50,
                 onEditingChanged: { editing in
                     if editing { pauseAndScheduleResume() }
                 }
@@ -188,8 +192,8 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
                 // so position labels against the actual thumb travel range.
                 let inset: CGFloat = 8
                 let trackWidth = max(0, geo.size.width - 2 * inset)
-                ForEach([0, 100, 200, 300, 400], id: \.self) { tick in
-                    let frac = CGFloat(tick) / 400
+                ForEach([50, 100, 150, 200, 250], id: \.self) { tick in
+                    let frac = CGFloat(tick - 50) / 200
                     tickLabel(tick)
                         .fixedSize()
                         .position(x: inset + trackWidth * frac, y: 8)
@@ -314,6 +318,9 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
 struct GesturePreviewCard: View {
     let type: GesturePreviewType
     var isActive: Bool = true
+    /// Only used by `.spaceNavigation` — when true, mirrors the mouse motion
+    /// and arrows horizontally so the user sees the drag direction reverse.
+    var inverted: Bool = false
 
     @State private var directionToggle: Bool = false
     @State private var rippleProgress: CGFloat = 0
@@ -511,23 +518,54 @@ struct GesturePreviewCard: View {
     }
 
     private var spaceNavigation: some View {
-        HStack(spacing: 30) {
-            Image(systemName: "arrow.left")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(type.accent)
-                .opacity(directionToggle ? 1 : 0.25)
-                .scaleEffect(directionToggle ? 1.15 : 0.9)
-                .offset(x: directionToggle ? -8 : -2)
-            mouseWithHold
-                .offset(x: directionToggle ? -16 : 16)
-                .rotationEffect(.degrees(directionToggle ? -4 : 4))
-            Image(systemName: "arrow.right")
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(type.accent)
-                .opacity(directionToggle ? 0.25 : 1)
-                .scaleEffect(directionToggle ? 0.9 : 1.15)
-                .offset(x: directionToggle ? 2 : 8)
+        // The filled square is on the same side the mouse drifts toward when
+        // not inverted, and on the OPPOSITE side when inverted. Because the
+        // computed position depends on `directionToggle`, and that toggle is
+        // changed inside a withAnimation block, the filled square slides
+        // continuously alongside the mouse animation — so it crosses the
+        // center exactly when the mouse does.
+        let goingLeft = directionToggle
+        let filledOnLeft = goingLeft != inverted
+        let slotWidth: CGFloat = 18
+        let slotHeight: CGFloat = 22
+        let slotGap: CGFloat = 6
+
+        return HStack(spacing: 36) {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.left")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(type.accent)
+                    .opacity(goingLeft ? 1 : 0.25)
+                    .scaleEffect(goingLeft ? 1.15 : 0.9)
+                mouseWithHold
+                    .offset(x: goingLeft ? -8 : 8)
+                    .rotationEffect(.degrees(goingLeft ? -3 : 3))
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(type.accent)
+                    .opacity(goingLeft ? 0.25 : 1)
+                    .scaleEffect(goingLeft ? 0.9 : 1.15)
+            }
+
+            // Two outline slots with a single filled square sliding between
+            // them. The slide tracks the mouse animation 1:1.
+            ZStack(alignment: .leading) {
+                HStack(spacing: slotGap) {
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .strokeBorder(type.accent.opacity(0.35), lineWidth: 1.2)
+                        .frame(width: slotWidth, height: slotHeight)
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .strokeBorder(type.accent.opacity(0.35), lineWidth: 1.2)
+                        .frame(width: slotWidth, height: slotHeight)
+                }
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .fill(type.accent)
+                    .frame(width: slotWidth, height: slotHeight)
+                    .offset(x: filledOnLeft ? 0 : (slotWidth + slotGap))
+            }
+            .frame(width: slotWidth * 2 + slotGap, height: slotHeight)
         }
+        .animation(.easeInOut(duration: 0.45), value: inverted)
     }
 
     private var scrollZoom: some View {
