@@ -281,6 +281,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         if let window = foundWindow {
             os_log("Found existing window, showing it", log: .default, type: .info)
             mainWindow = window
+            // Rebuild the SwiftUI hosting view on every show. After
+            // orderOut + makeKeyAndOrderFront SwiftUI's animation system
+            // stops interpolating — withAnimation just snaps between the
+            // start and end frame. A fresh NSHostingView sidesteps that.
+            window.contentView = NSHostingView(rootView: ContentView(settings: settingsManager))
             NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
             window.orderFrontRegardless()
