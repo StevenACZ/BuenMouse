@@ -96,9 +96,18 @@ open BuenMouse.xcodeproj
 O desde terminal:
 
 ```bash
-xcodebuild -project BuenMouse.xcodeproj -scheme BuenMouse \
-  -configuration Release -derivedDataPath ./build build
+make ci-check
 ```
+
+Para iterar localmente en tu Mac:
+
+```bash
+make install-dev
+```
+
+`make install-dev` compila la app Release firmada localmente, la reinstala en
+`/Applications/BuenMouse.app` y la relanza sin resetear los permisos de macOS
+mientras `Signing.xcconfig` mantenga la misma identidad Apple Development.
 
 ### Requisitos
 

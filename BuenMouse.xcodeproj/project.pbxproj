@@ -13,9 +13,10 @@
 		B0814B5F2E14B64400112727 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0814B5B2E14B64400112727 /* WindowAccessor.swift */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXFileReference section */
-		B06242CF2E0241D00061FE50 /* BuenMouse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BuenMouse.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B0814B582E14B64400112727 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+	/* Begin PBXFileReference section */
+			B06242CF2E0241D00061FE50 /* BuenMouse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BuenMouse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+			B0AA51A6516000000000000C /* SigningDefaults.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = SigningDefaults.xcconfig; sourceTree = "<group>"; };
+			B0814B582E14B64400112727 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B0814B592E14B64400112727 /* BuenMouseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuenMouseApp.swift; sourceTree = "<group>"; };
 		B0814B5A2E14B64400112727 /* ServiceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceManager.swift; sourceTree = "<group>"; };
 		B0814B5B2E14B64400112727 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
@@ -68,8 +69,9 @@
 			children = (
 				B0814B7C2E14B88800112727 /* Core */,
 				B0814B842E14B88C00112727 /* Views */,
-				B0FF76AA2E04CB480058666B /* Resources */,
-				B0814B582E14B64400112727 /* AppDelegate.swift */,
+					B0FF76AA2E04CB480058666B /* Resources */,
+					B0AA51A6516000000000000C /* SigningDefaults.xcconfig */,
+					B0814B582E14B64400112727 /* AppDelegate.swift */,
 				B0814B592E14B64400112727 /* BuenMouseApp.swift */,
 				B0814B5A2E14B64400112727 /* ServiceManager.swift */,
 				B0814B5B2E14B64400112727 /* WindowAccessor.swift */,
@@ -171,9 +173,10 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		B06242EF2E0241D10061FE50 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
+			B06242EF2E0241D10061FE50 /* Debug */ = {
+				isa = XCBuildConfiguration;
+				baseConfigurationReference = B0AA51A6516000000000000C /* SigningDefaults.xcconfig */;
+				buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -206,8 +209,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = NXT93S55FY;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
+					ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
@@ -235,9 +237,10 @@
 			};
 			name = Debug;
 		};
-		B06242F02E0241D10061FE50 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
+			B06242F02E0241D10061FE50 /* Release */ = {
+				isa = XCBuildConfiguration;
+				baseConfigurationReference = B0AA51A6516000000000000C /* SigningDefaults.xcconfig */;
+				buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -270,8 +273,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = NXT93S55FY;
-				ENABLE_NS_ASSERTIONS = NO;
+					ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
@@ -294,15 +296,13 @@
 		B06242F22E0241D10061FE50 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Resources/BuenMouse.entitlements;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-					CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = NXT93S55FY;
-				ENABLE_HARDENED_RUNTIME = YES;
+					ARCHS = arm64;
+					ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+					ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+					CODE_SIGN_ENTITLEMENTS = Resources/BuenMouse.entitlements;
+					COMBINE_HIDPI_IMAGES = YES;
+						CURRENT_PROJECT_VERSION = 2;
+					ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Resources/Info.plist;
@@ -325,15 +325,13 @@
 		B06242F32E0241D10061FE50 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = Resources/BuenMouse.entitlements;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-					CURRENT_PROJECT_VERSION = 2;
-				DEVELOPMENT_TEAM = NXT93S55FY;
-				ENABLE_HARDENED_RUNTIME = YES;
+					ARCHS = arm64;
+					ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+					ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+					CODE_SIGN_ENTITLEMENTS = Resources/BuenMouse.entitlements;
+					COMBINE_HIDPI_IMAGES = YES;
+						CURRENT_PROJECT_VERSION = 2;
+					ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Resources/Info.plist;

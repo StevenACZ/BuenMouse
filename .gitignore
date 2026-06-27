@@ -1,18 +1,28 @@
-# Xcode
-#
-# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
+# BuenMouse - public repo hygiene
 
-## User settings
-xcuserdata/
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+Icon
+.DocumentRevisions-V100
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
 
-## compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
-*.xcscmblueprint
-*.xccheckout
-
-## compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
+# Xcode build output and user state
 build/
+build_check/
 DerivedData/
-*.moved-aside
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -21,149 +31,105 @@ DerivedData/
 !default.mode2v3
 *.perspectivev3
 !default.perspectivev3
-
-## Obj-C/Swift specific
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.xcscmblueprint
 *.hmap
-
-## App packaging
-*.ipa
-*.dSYM.zip
 *.dSYM
+*.dSYM.zip
+*.xcarchive
+*.xcresult
+*.xcdistributionlogs
 
-## Playgrounds
-timeline.xctimeline
-playground.xcworkspace
+# Local signing/provisioning
+*.mobileprovision
+*.provisionprofile
+*.cer
+*.p12
+*.pem
+*.key
+*.xcconfig.local
+Local.xcconfig
+Signing.xcconfig
 
 # Swift Package Manager
-#
-# Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
-# Packages/
-# Package.pins
-# Package.resolved
-# *.xcodeproj
-#
-# Xcode automatically generates this directory with a .xcworkspacedata file and xcuserdata
-# hence it is not needed unless you have added a package configuration file to your project
-# .swiftpm
-
 .build/
+.swiftpm/
+Packages/
+Package.resolved
 
-# CocoaPods
-#
-# We recommend against adding the Pods directory to your .gitignore. However
-# you should judge for yourself, the pros and cons are mentioned at:
-# https://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control
-#
-# Pods/
-#
-# Add this line if you want to avoid checking in source code from the Xcode workspace
-# *.xcworkspace
-
-# Carthage
-#
-# Add this line if you want to avoid checking in source code from Carthage dependencies.
-# Carthage/Checkouts
-
+# CocoaPods / Carthage / Accio
+Pods/
 Carthage/Build/
-
-# Accio dependency management
+Carthage/Checkouts/
 Dependencies/
 .accio/
 
 # fastlane
-#
-# It is recommended to not store the screenshots in the git repo.
-# Instead, use fastlane to re-generate the screenshots whenever they are needed.
-# For more information about the recommended setup visit:
-# https://docs.fastlane.tools/best-practices/source-control/#source-control
-
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
-# Code Injection
-#
-# After new code Injection tools there's a generated folder /iOSInjectionProject
-# https://github.com/johnno1962/injectionforxcode
-
+# Playgrounds / injection
+timeline.xctimeline
+playground.xcworkspace
 iOSInjectionProject/
 
-# macOS specific
-.DS_Store
-.AppleDouble
-.LSOverride
+# Sensitive files
+.env
+.env.*
+.env.local
+.env.production
+secrets/
+credentials/
+*.credentials.json
+*credentials*.json
+*service-account*.json
 
-# Icon must end with two \r
-Icon
+# Crash reports and logs
+*.crash
+*.log
+logs/
 
-# Thumbnails
-._*
+# Archives and distribution artifacts
+*.app
+*.ipa
+*.zip
+*.tar.gz
+*.dmg
+*.pkg
+*.rar
 
-# Files that might appear in the root of a volume
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-
-# Directories potentially created on remote AFP share
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Backup files
+# Temporary and backup files
+*.tmp
+*.temp
+tmp/
+temp/
 *.bak
 *.backup
 *.orig
 
-# Log files
-*.log
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.kiro/
+.mcp.json
 
-# Temporary files
-*.tmp
-*.temp
+# Local AI/editor context
+.agent/
+.agents/
+.codex/
+.cursor/
+.claude/
+.superpowers/
 
-# Archive files (unless specifically needed)
-*.zip
-*.tar.gz
-*.rar
-
-# Build artifacts
-*.app
-*.dmg
-*.pkg
-
-# Personal notes and documentation
+# Personal notes (local only)
 NOTES.md
 TODO.md
 PERSONAL_README.md
-
-# Environment files
-.env
-.env.local
-.env.production
-
-# Kiro IDE specific
-.kiro/
-
-# Claude Code
-.claude/
-
-# MCP Configuration
-.mcp.json
-
-# Project documentation (keep local only)
-CLAUDE.md
-AGENTS.md
