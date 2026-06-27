@@ -11,6 +11,14 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Standard Swift project workflow tooling: shared formatting config, Makefile
   checks, optional Lefthook hooks, public agent guide, and contributor/security
   docs.
+- Stable local development signing via `SigningDefaults.xcconfig` /
+  `Signing.xcconfig.example` plus `make install-dev` for fast local reinstalls
+  without resetting macOS permission grants.
+
+### Changed
+
+- Moved local signing identity out of the tracked Xcode project and into the
+  ignored `Signing.xcconfig` override used for developer installs.
 
 ## [2.1.2] - 2026-05-29
 

@@ -66,9 +66,11 @@ xcodebuild -project BuenMouse.xcodeproj -scheme BuenMouse \
 
 ## Local Testing
 
-Install or relaunch the app only when Steven explicitly asks. Reinstalling to
-the same `/Applications/BuenMouse.app` path with the same signing identity should
-preserve existing macOS permissions.
+Use `make install-dev` for routine local app testing on Steven's Mac after he
+has approved installation/relaunch for the task. It builds a signed Release app,
+reinstalls to `/Applications/BuenMouse.app`, and relaunches it. Keeping the same
+app name, bundle id, and Apple Development signing identity preserves
+Accessibility and Input Monitoring grants across rebuilds.
 
 Useful runtime log stream:
 
@@ -92,8 +94,7 @@ Crash reports land under `~/Library/Logs/DiagnosticReports/BuenMouse-*.ips`.
 
 - Build and validate the Release app before packaging.
 - DMGs are release-only; do not create one for routine local verification.
-- Use the existing `create-dmg` release flow if Steven approves release
-  packaging.
+- Use `make notarized-dmg` only when Steven approves release packaging.
 - Do not create GitHub releases, tags, or release notes without explicit
   approval.
 
