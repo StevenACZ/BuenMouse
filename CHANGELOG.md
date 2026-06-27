@@ -6,6 +6,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Standard Swift project workflow tooling: shared formatting config, Makefile
+  checks, optional Lefthook hooks, public agent guide, and contributor/security
+  docs.
+
 ## [2.1.2] - 2026-05-29
 
 ### Changed
@@ -60,7 +66,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Menu bar app behavior: status bar toggle, dropdown menu, and accessory-style
   presentation without duplicate windows.
 
-## [1.1.2] - 2025-11-30
+## [1.1.2] - 2025-11-21
 
 ### Added
 
