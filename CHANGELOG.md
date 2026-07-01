@@ -6,6 +6,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-07-01
+
 ### Added
 
 - Modern menu bar panel: clicking the status icon now opens a SwiftUI dropdown

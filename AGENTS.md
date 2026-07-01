@@ -8,12 +8,12 @@ commits, changelogs, and durable technical docs in English.
 ## Product
 
 - macOS menu bar app for advanced mouse gestures.
-- Minimum macOS: 13.0.
+- Minimum macOS: 15.0.
 - UI stack: SwiftUI + AppKit.
 - Main target: `BuenMouse` in `BuenMouse.xcodeproj`.
 - Status-bar-first app; no Dock icon.
-- Accessibility and Input Monitoring permissions are required for gesture
-  handling.
+- Accessibility permission is required for the event tap; Apple Events is
+  used for Mission Control / Spaces actions.
 
 ## Architecture
 
@@ -87,8 +87,8 @@ xcodebuild -project BuenMouse.xcodeproj -scheme BuenMouse \
 Use `make install-dev` for routine local app testing on Steven's Mac after he
 has approved installation/relaunch for the task. It builds a signed Release app,
 reinstalls to `/Applications/BuenMouse.app`, and relaunches it. Keeping the same
-app name, bundle id, and Apple Development signing identity preserves
-Accessibility and Input Monitoring grants across rebuilds.
+app name, bundle id, and Apple Development signing identity preserves the
+Accessibility grant across rebuilds.
 
 Useful runtime log stream:
 

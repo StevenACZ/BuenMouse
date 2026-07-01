@@ -5,7 +5,7 @@ import SwiftUI
 /// on the gesture showcase.
 struct AboutView: View {
     private var version: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.1.1"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "3.0.0"
     }
 
     private var build: String {

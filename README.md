@@ -4,7 +4,7 @@
 
 **Convierte tu mouse en una herramienta de productividad en macOS**
 
-[![macOS](https://img.shields.io/badge/macOS-13.0+-blue.svg)](https://www.apple.com/macos/)
+[![macOS](https://img.shields.io/badge/macOS-15.0+-blue.svg)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.0+-orange.svg)](https://swift.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -111,8 +111,8 @@ mientras `Signing.xcconfig` mantenga la misma identidad Apple Development.
 
 ### Requisitos
 
-- macOS 13.0+ (Ventura o más reciente)
-- Xcode 15.0+
+- macOS 15.0+ (Sequoia o más reciente)
+- Xcode 16.0+
 - Swift 5.0+
 
 ### Stack técnico
