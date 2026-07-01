@@ -9,9 +9,7 @@ protocol SettingsProtocol: ObservableObject {
     var enableScrollZoom: Bool { get set }
     var enableMissionControl: Bool { get set }
     var enableSpaceNavigation: Bool { get set }
-    var isDarkMode: Bool { get set }
-    var followSystemAppearance: Bool { get set }
     var launchAtLogin: Bool { get set }
 
     func resetToDefaults()
-} 
+}

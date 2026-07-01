@@ -17,15 +17,33 @@ commits, changelogs, and durable technical docs in English.
 
 ## Architecture
 
-- `BuenMouseApp.swift`: app entry point.
-- `AppDelegate.swift`: window lifecycle and menu bar dropdown.
-- `ServiceManager.swift`: launch-at-login integration.
+Status-bar-first: the SwiftUI `App` body is an empty `Settings` scene; every
+real window is created and owned by AppKit controllers. Never reintroduce a
+`WindowGroup` — it opens (and flashes) a window on every launch.
+
+- `BuenMouseApp.swift`: hollow entry point (`Settings { EmptyView() }`).
+- `AppDelegate.swift`: app lifecycle, event stack wiring, permission
+  onboarding, wake-from-sleep tap re-assert. Reopen is a no-op by design.
+- `ServiceManager.swift`: thin `SMAppService` wrapper for launch-at-login.
+- `Core/MenuBar`: `MenuBarStatusController` — status item, transient
+  `NSPopover` panel (SwiftUI content, self-sizing), Settings/About windows.
 - `Core/EventHandling`: event tap setup, gesture state, scroll inversion, and
-  Ctrl-scroll zoom.
-- `Core/Permissions`: Accessibility onboarding and System Settings helper UI.
+  Ctrl-scroll zoom. The tap mask excludes `mouseMoved` and the callback
+  re-enables the tap on `tapDisabledByTimeout` — keep both properties; the
+  app runs 24/7.
+- `Core/Permissions`: Accessibility onboarding window (content-hugging) and
+  the drag-to-grant System Settings overlay.
 - `Core/Settings`: persisted settings and protocol surface for views.
 - `Core/SystemActions`: local macOS actions such as Mission Control / Spaces.
-- `Views`: settings surface, gesture previews, and permission requirements UI.
+- `Core/UI/Theme.swift`: brand accent (cyan) and shared animation constants.
+- `Views/MenuBar`: dropdown panel (header + gesture grid + action rows).
+- `Views/Settings`: consolidated settings window (showcase + general options).
+- `Views/About`, `Views/Permissions`, `Views/Components`: About panel,
+  onboarding content, shared gesture metadata.
+
+UI conventions: SwiftUI content hosted in AppKit windows via
+`NSHostingController`; window content is rebuilt on each show and dropped on
+close so timers never run hidden; appearance always follows the system.
 
 ## Guardrails
 

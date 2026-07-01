@@ -10,7 +10,6 @@
 		B0814B5C2E14B64400112727 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0814B582E14B64400112727 /* AppDelegate.swift */; };
 		B0814B5D2E14B64400112727 /* BuenMouseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0814B592E14B64400112727 /* BuenMouseApp.swift */; };
 		B0814B5E2E14B64400112727 /* ServiceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0814B5A2E14B64400112727 /* ServiceManager.swift */; };
-		B0814B5F2E14B64400112727 /* WindowAccessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0814B5B2E14B64400112727 /* WindowAccessor.swift */; };
 /* End PBXBuildFile section */
 
 	/* Begin PBXFileReference section */
@@ -19,7 +18,6 @@
 			B0814B582E14B64400112727 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B0814B592E14B64400112727 /* BuenMouseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuenMouseApp.swift; sourceTree = "<group>"; };
 		B0814B5A2E14B64400112727 /* ServiceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceManager.swift; sourceTree = "<group>"; };
-		B0814B5B2E14B64400112727 /* WindowAccessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowAccessor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -74,7 +72,6 @@
 					B0814B582E14B64400112727 /* AppDelegate.swift */,
 				B0814B592E14B64400112727 /* BuenMouseApp.swift */,
 				B0814B5A2E14B64400112727 /* ServiceManager.swift */,
-				B0814B5B2E14B64400112727 /* WindowAccessor.swift */,
 				B06242D02E0241D00061FE50 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -166,7 +163,6 @@
 				B0814B5C2E14B64400112727 /* AppDelegate.swift in Sources */,
 				B0814B5D2E14B64400112727 /* BuenMouseApp.swift in Sources */,
 				B0814B5E2E14B64400112727 /* ServiceManager.swift in Sources */,
-				B0814B5F2E14B64400112727 /* WindowAccessor.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

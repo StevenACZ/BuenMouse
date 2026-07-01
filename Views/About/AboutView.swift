@@ -18,7 +18,7 @@ struct AboutView: View {
         return formatter.string(from: Date())
     }
 
-    private let accent: Color = .blue
+    private let accent: Color = Theme.accent
 
     var body: some View {
         VStack(spacing: 18) {
@@ -91,12 +91,14 @@ struct AboutView: View {
 
     private var linksSection: some View {
         HStack(spacing: 10) {
-            linkButton(label: "GitHub",
-                       systemImage: "chevron.left.forwardslash.chevron.right",
-                       url: "https://github.com/StevenACZ/BuenMouse")
-            linkButton(label: "Report Issue",
-                       systemImage: "exclamationmark.bubble",
-                       url: "https://github.com/StevenACZ/BuenMouse/issues/new")
+            linkButton(
+                label: "GitHub",
+                systemImage: "chevron.left.forwardslash.chevron.right",
+                url: "https://github.com/StevenACZ/BuenMouse")
+            linkButton(
+                label: "Report Issue",
+                systemImage: "exclamationmark.bubble",
+                url: "https://github.com/StevenACZ/BuenMouse/issues/new")
         }
     }
 
@@ -176,5 +178,5 @@ struct AboutView: View {
 }
 
 #if DEBUG
-#Preview { AboutView() }
+    #Preview { AboutView() }
 #endif

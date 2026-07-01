@@ -1,11 +1,13 @@
-import Cocoa
 import ApplicationServices
+import Cocoa
 
-final class GestureHandler: NSObject {
+/// Translates raw mouse events into BuenMouse gestures:
+/// middle click → Mission Control, middle drag → switch Spaces,
+/// and Ctrl + left drag → scroll.
+final class GestureHandler {
     private weak var settingsManager: SettingsManager?
     private weak var scrollHandler: ScrollHandler?
-    
-    // MARK: - Internal state
+
     private enum GestureState {
         case idle
         case tracking(startLocation: CGPoint)
@@ -17,34 +19,28 @@ final class GestureHandler: NSObject {
     init(settingsManager: SettingsManager, scrollHandler: ScrollHandler) {
         self.settingsManager = settingsManager
         self.scrollHandler = scrollHandler
-        super.init()
     }
-    
+
     func resetState() {
         currentState = .idle
     }
-    
+
     func handleEvent(type: CGEventType, event: CGEvent) -> EventResult {
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
-        let flags = event.flags
-        let isControlPressed = flags.contains(.maskControl)
+        let isControlPressed = event.flags.contains(.maskControl)
         let mouseLocation = event.location
-        let now = CFAbsoluteTimeGetCurrent()
 
         // Handle mouse up events
         if type == .leftMouseUp || type == .otherMouseUp {
             scrollHandler?.setControlClickScrolling(false)
 
-            if case .scrollingDrag(_) = currentState {
+            if case .scrollingDrag = currentState {
                 currentState = .idle
             } else if case .tracking(let startLocation) = currentState, type == .otherMouseUp, buttonNumber == 2 {
                 let dx = abs(mouseLocation.x - startLocation.x)
                 let dy = abs(mouseLocation.y - startLocation.y)
-                if hypot(dx, dy) < 5 {
-                    // Only activate Mission Control if enabled in settings
-                    if settingsManager?.enableMissionControl == true {
-                        SystemActionRunner.activateMissionControl()
-                    }
+                if hypot(dx, dy) < 5, settingsManager?.enableMissionControl == true {
+                    SystemActionRunner.activateMissionControl()
                 }
                 currentState = .idle
                 return .consumed
@@ -53,17 +49,18 @@ final class GestureHandler: NSObject {
             }
         }
 
-        // Handle gesture states
         switch currentState {
         case .idle:
             if type == .leftMouseDown && isControlPressed {
                 currentState = .scrollingDrag(startLocation: mouseLocation)
                 scrollHandler?.setControlClickScrolling(true)
-                scrollHandler?.setLastControlClickTime(now)
+                scrollHandler?.setLastControlClickTime(CFAbsoluteTimeGetCurrent())
                 return .consumed
             }
 
-            if type == .otherMouseDown && buttonNumber == 2 {
+            // Only claim the middle button while a middle-button gesture is
+            // enabled; otherwise middle clicks keep their native behavior.
+            if type == .otherMouseDown && buttonNumber == 2, middleButtonGesturesEnabled {
                 currentState = .tracking(startLocation: mouseLocation)
                 return .consumed
             }
@@ -79,11 +76,10 @@ final class GestureHandler: NSObject {
             }
 
         case .tracking(let startLocation):
-            if type == .otherMouseDragged || type == .mouseMoved {
+            if type == .otherMouseDragged {
                 let deltaX = mouseLocation.x - startLocation.x
-                let threshold = settingsManager?.dragThreshold ?? 40.0
+                let threshold = settingsManager?.dragThreshold ?? 100.0
                 if abs(deltaX) > CGFloat(threshold) {
-                    // Only switch spaces if enabled in settings
                     if settingsManager?.enableSpaceNavigation == true {
                         let invertDirection = settingsManager?.invertDragDirection ?? false
                         if deltaX > 0 {
@@ -101,7 +97,11 @@ final class GestureHandler: NSObject {
         return .passed
     }
 
-    // MARK: - Additional utility methods
+    private var middleButtonGesturesEnabled: Bool {
+        guard let settings = settingsManager else { return false }
+        return settings.enableMissionControl || settings.enableSpaceNavigation
+    }
+
     private func sendScroll(dx: CGFloat, dy: CGFloat) {
         guard let src = CGEventSource(stateID: .hidSystemState) else { return }
         let scrollEvent = CGEvent(
@@ -113,31 +113,5 @@ final class GestureHandler: NSObject {
             wheel3: 0
         )
         scrollEvent?.post(tap: .cghidEventTap)
-    }
-}
-
-// MARK: - Additional improvements for event tap setup
-extension GestureHandler {
-    
-    // Método para configurar el event tap con opciones optimizadas
-    static func createEventTap(handler: @escaping CGEventTapCallBack) -> CFMachPort? {
-        let eventMask = (1 << CGEventType.leftMouseDown.rawValue) |
-                       (1 << CGEventType.leftMouseUp.rawValue) |
-                       (1 << CGEventType.leftMouseDragged.rawValue) |
-                       (1 << CGEventType.otherMouseDown.rawValue) |
-                       (1 << CGEventType.otherMouseUp.rawValue) |
-                       (1 << CGEventType.otherMouseDragged.rawValue) |
-                       (1 << CGEventType.mouseMoved.rawValue)
-        
-        let eventTap = CGEvent.tapCreate(
-            tap: .cgSessionEventTap,
-            place: .headInsertEventTap,
-            options: .defaultTap,
-            eventsOfInterest: CGEventMask(eventMask),
-            callback: handler,
-            userInfo: nil
-        )
-        
-        return eventTap
     }
 }

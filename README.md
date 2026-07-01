@@ -62,15 +62,15 @@ Ya está — el ícono del cursor aparece en tu barra de menú.
 
 ## 🎮 Cómo se usa
 
-Después de instalar, haz clic en el ícono de BuenMouse en la barra de menú y selecciona **Show Settings**. Verás una ventana con un carrusel animado mostrando cada gesto. Cada gesto se controla con un click en su tarjeta — el indicador `On` / `Off` te dice si está activo.
+Después de instalar, haz clic en el ícono de BuenMouse en la barra de menú. Se abre un panel con el estado de la app y una cuadrícula visual de los 4 gestos — un click en cada tarjeta lo activa o desactiva al instante, y el switch de arriba pausa todos los gestos sin cerrar la app.
 
-Desde el menú de la barra puedes también:
+Desde el panel puedes también:
 
-- **Gesture Monitoring** — pausa todos los gestos sin cerrar la app
-- **Launch at Login** — arranca BuenMouse automáticamente al iniciar el Mac
-- **Appearance** — sigue el sistema, o forzar tema claro / oscuro
-- **Reset to Defaults** — vuelve todo a la configuración inicial
+- **Settings** — ventana con el carrusel animado de gestos, distancia de arrastre, **Launch at Login** y **Reset to Defaults**
 - **About BuenMouse** — versión y links del proyecto
+- **Quit BuenMouse** — cierra la app
+
+La apariencia sigue automáticamente el tema del sistema (claro / oscuro).
 
 ---
 
