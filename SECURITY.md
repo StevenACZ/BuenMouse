@@ -11,7 +11,8 @@ Do not commit:
   paths
 - Private agent notes, local crash reports, DMGs, or archives
 
-BuenMouse uses Accessibility and Input Monitoring for gesture handling. Do not
+BuenMouse uses Accessibility (and Apple Events for system actions) for
+gesture handling. Do not
 add cloud relay, telemetry endpoints, or credential storage without an explicit
 design and security review.
 

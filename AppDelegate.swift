@@ -2,72 +2,98 @@ import Cocoa
 import SwiftUI
 import os.log
 
-final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
-    // MARK: - Components
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
     let settingsManager = SettingsManager()
-    private var eventMonitor: EventMonitor?
-    private var gestureHandler: GestureHandler?
+
     private var scrollHandler: ScrollHandler?
-
-    // MARK: - Status Bar
-    private var statusItem: NSStatusItem?
-    private var mainWindow: NSWindow?
-    private var aboutWindow: NSWindow?
+    private var gestureHandler: GestureHandler?
+    private var eventMonitor: EventMonitor?
+    private var menuBarController: MenuBarStatusController?
     private var permissionWindowController: PermissionWindowController?
-
-    override init() {
-        super.init()
-        settingsManager.appDelegate = self
-    }
+    private var wakeObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Check for login item simulation mode
-        let simulateLoginItem = CommandLine.arguments.contains("-simulateLoginItem")
-        os_log("Application launching... (simulateLoginItem: %{public}@)", log: .default, type: .info, simulateLoginItem ? "YES" : "NO")
-        os_log("NSApp.windows.count at launch: %d", log: .default, type: .info, NSApp.windows.count)
-
-        // Register for launch at login
-        _ = ServiceManager.register()
+        NSApp.setActivationPolicy(.accessory)
 
         setupComponents()
-        setupStatusBar()
+        setupMenuBar()
+        configureLaunchAtLoginDefault()
 
-        // Guided permission onboarding. Skip the raw system prompt — the new
-        // window opens System Settings and supports drag-to-add.
-        if !AccessibilityPermission.isGranted {
-            showPermissionOnboarding()
-        } else if settingsManager.isMonitoringActive {
-            eventMonitor?.startMonitoring()
+        settingsManager.onMonitoringChanged = { [weak self] in
+            self?.applyMonitoringState()
         }
 
-        settingsManager.setupAppearanceObserver()
-        settingsManager.updateAppearance()
+        if AccessibilityPermission.isGranted {
+            applyMonitoringState()
+        } else {
+            showPermissionOnboarding()
+        }
 
-        // Hide window by default after a short delay to let it initialize
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            os_log("After 0.1s delay - NSApp.windows.count: %d, mainWindow: %{public}@",
-                   log: .default, type: .info,
-                   NSApp.windows.count,
-                   self?.mainWindow == nil ? "NIL" : "EXISTS")
-            self?.hideWindow()
+        // After sleep the session tap can come back disabled; re-assert it.
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.eventMonitor?.reassertTap()
+            }
         }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         eventMonitor?.stopMonitoring()
+        if let observer = wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // Don't quit when window is closed - menu bar app behavior
-        return false
+        false
     }
 
+    /// Relaunching the app (Finder, Spotlight, Launchpad) must not flash any
+    /// window — the status item is the only entry point.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        // Only show window if there's no visible window already
-        if !flag {
-            showWindow()
+        false
+    }
+
+    // MARK: - Setup
+
+    private func setupComponents() {
+        let scroll = ScrollHandler(settingsManager: settingsManager)
+        let gesture = GestureHandler(settingsManager: settingsManager, scrollHandler: scroll)
+        scrollHandler = scroll
+        gestureHandler = gesture
+        eventMonitor = EventMonitor(gestureHandler: gesture, scrollHandler: scroll)
+    }
+
+    private func setupMenuBar() {
+        let controller = MenuBarStatusController(settings: settingsManager)
+        controller.onOpenPermissions = { [weak self] in
+            self?.showPermissionOnboarding()
         }
-        return true
+        menuBarController = controller
+        controller.start()
+    }
+
+    /// First launch only: opt the app into launch-at-login so an always-on
+    /// utility is on by default, while later user choices are respected.
+    private func configureLaunchAtLoginDefault() {
+        let key = "didConfigureLaunchAtLogin"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        UserDefaults.standard.set(true, forKey: key)
+        settingsManager.launchAtLogin = true
+    }
+
+    // MARK: - Monitoring
+
+    private func applyMonitoringState() {
+        if settingsManager.isMonitoringActive && AccessibilityPermission.isGranted {
+            eventMonitor?.startMonitoring()
+        } else {
+            eventMonitor?.stopMonitoring()
+        }
+        menuBarController?.refreshStatusIcon()
     }
 
     // MARK: - Permission Onboarding
@@ -85,281 +111,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
     private func handlePermissionGranted() {
         os_log("Accessibility permission granted — starting monitoring", log: .default, type: .info)
-
-        if settingsManager.isMonitoringActive {
-            eventMonitor?.startMonitoring()
-            updateStatusBarIcon()
-        }
+        applyMonitoringState()
 
         // Give the user 1 s to see the "You're all set!" success state, then close.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             self?.permissionWindowController?.close()
             self?.permissionWindowController = nil
         }
-    }
-
-    private func setupComponents() {
-        scrollHandler = ScrollHandler(settingsManager: settingsManager)
-        gestureHandler = GestureHandler(settingsManager: settingsManager, scrollHandler: scrollHandler!)
-        eventMonitor = EventMonitor(gestureHandler: gestureHandler!, scrollHandler: scrollHandler!)
-    }
-
-    // MARK: - Status Bar Setup
-    private func setupStatusBar() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-
-        updateStatusBarIcon()
-        rebuildStatusBarMenu()
-    }
-
-    /// Rebuilds the entire menu so checkmarks stay in sync with settings.
-    /// Called on every settings change that affects the menu.
-    private func rebuildStatusBarMenu() {
-        let menu = NSMenu()
-
-        let showSettingsItem = NSMenuItem(title: "Show Settings", action: #selector(showSettingsClicked), keyEquivalent: ",")
-        showSettingsItem.target = self
-        menu.addItem(showSettingsItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        let monitoringItem = NSMenuItem(title: "Gesture Monitoring", action: #selector(toggleMonitoringClicked), keyEquivalent: "")
-        monitoringItem.target = self
-        monitoringItem.state = settingsManager.isMonitoringActive ? .on : .off
-        menu.addItem(monitoringItem)
-
-        let launchItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLaunchAtLoginClicked), keyEquivalent: "")
-        launchItem.target = self
-        launchItem.state = settingsManager.launchAtLogin ? .on : .off
-        menu.addItem(launchItem)
-
-        // Appearance submenu
-        let appearanceItem = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
-        let appearanceSubmenu = NSMenu(title: "Appearance")
-
-        let systemItem = NSMenuItem(title: "System", action: #selector(selectAppearanceSystem), keyEquivalent: "")
-        systemItem.target = self
-        systemItem.state = settingsManager.followSystemAppearance ? .on : .off
-        appearanceSubmenu.addItem(systemItem)
-
-        let lightItem = NSMenuItem(title: "Light", action: #selector(selectAppearanceLight), keyEquivalent: "")
-        lightItem.target = self
-        lightItem.state = (!settingsManager.followSystemAppearance && !settingsManager.isDarkMode) ? .on : .off
-        appearanceSubmenu.addItem(lightItem)
-
-        let darkItem = NSMenuItem(title: "Dark", action: #selector(selectAppearanceDark), keyEquivalent: "")
-        darkItem.target = self
-        darkItem.state = (!settingsManager.followSystemAppearance && settingsManager.isDarkMode) ? .on : .off
-        appearanceSubmenu.addItem(darkItem)
-
-        appearanceItem.submenu = appearanceSubmenu
-        menu.addItem(appearanceItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        let resetItem = NSMenuItem(title: "Reset to Defaults…", action: #selector(resetClicked), keyEquivalent: "")
-        resetItem.target = self
-        menu.addItem(resetItem)
-
-        let aboutItem = NSMenuItem(title: "About BuenMouse", action: #selector(aboutClicked), keyEquivalent: "")
-        aboutItem.target = self
-        menu.addItem(aboutItem)
-
-        menu.addItem(NSMenuItem.separator())
-
-        let quitItem = NSMenuItem(title: "Quit BuenMouse", action: #selector(quitClicked), keyEquivalent: "q")
-        quitItem.target = self
-        menu.addItem(quitItem)
-
-        statusItem?.menu = menu
-    }
-
-    @objc private func showSettingsClicked() {
-        os_log("Show Settings clicked", log: .default, type: .info)
-        showWindow()
-    }
-
-    @objc private func toggleMonitoringClicked() {
-        settingsManager.isMonitoringActive.toggle()
-        applyMonitoringChange()
-    }
-
-    private func applyMonitoringChange() {
-        updateStatusBarIcon()
-        rebuildStatusBarMenu()
-
-        if settingsManager.isMonitoringActive {
-            eventMonitor?.startMonitoring()
-        } else {
-            eventMonitor?.stopMonitoring()
-        }
-
-        os_log("Monitoring toggled: %{public}@", log: .default, type: .info,
-               settingsManager.isMonitoringActive ? "ON" : "OFF")
-    }
-
-    @objc private func toggleLaunchAtLoginClicked() {
-        settingsManager.launchAtLogin.toggle()
-        rebuildStatusBarMenu()
-    }
-
-    @objc private func selectAppearanceSystem() {
-        settingsManager.followSystemAppearance = true
-        rebuildStatusBarMenu()
-    }
-
-    @objc private func selectAppearanceLight() {
-        settingsManager.followSystemAppearance = false
-        settingsManager.isDarkMode = false
-        rebuildStatusBarMenu()
-    }
-
-    @objc private func selectAppearanceDark() {
-        settingsManager.followSystemAppearance = false
-        settingsManager.isDarkMode = true
-        rebuildStatusBarMenu()
-    }
-
-    @objc private func resetClicked() {
-        let alert = NSAlert()
-        alert.messageText = "Reset all settings to defaults?"
-        alert.informativeText = "This restores every BuenMouse preference. This cannot be undone."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Reset")
-        alert.addButton(withTitle: "Cancel")
-        if alert.runModal() == .alertFirstButtonReturn {
-            settingsManager.resetToDefaults()
-            rebuildStatusBarMenu()
-        }
-    }
-
-    @objc private func aboutClicked() {
-        showAboutWindow()
-    }
-
-    private func showAboutWindow() {
-        if let window = aboutWindow {
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
-            return
-        }
-
-        let hosting = NSHostingController(rootView: AboutView())
-        let window = NSWindow(contentViewController: hosting)
-        window.title = "About BuenMouse"
-        window.styleMask = [.titled, .closable]
-        window.isReleasedWhenClosed = false
-        window.center()
-        window.setFrameAutosaveName("BuenMouseAboutWindow")
-
-        aboutWindow = window
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
-    }
-
-    @objc private func quitClicked() {
-        NSApplication.shared.terminate(nil)
-    }
-
-    // MARK: - Window Management
-    func setMainWindow(_ window: NSWindow?) {
-        os_log("setMainWindow called: %{public}@", log: .default, type: .info, window == nil ? "NIL" : "WINDOW SET")
-        self.mainWindow = window
-    }
-
-    private func showWindow() {
-        os_log("showWindow() called", log: .default, type: .info)
-
-        // Find any existing SwiftUI window (not status bar windows)
-        let foundWindow = NSApp.windows.first { window in
-            return window.styleMask.contains(.titled) &&
-                   !window.className.contains("NSStatusBar")
-        }
-
-        if let window = foundWindow {
-            os_log("Found existing window, showing it", log: .default, type: .info)
-            mainWindow = window
-            // Rebuild the SwiftUI hosting view on every show. After
-            // orderOut + makeKeyAndOrderFront SwiftUI's animation system
-            // stops interpolating — withAnimation just snaps between the
-            // start and end frame. A fresh NSHostingView sidesteps that.
-            window.contentView = NSHostingView(rootView: ContentView(settings: settingsManager))
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
-        } else {
-            // No window exists - need to create one
-            os_log("No window found, creating new window...", log: .default, type: .info)
-            createAndShowWindow()
-        }
-    }
-
-    private func createAndShowWindow() {
-        // Create a new SwiftUI window programmatically
-        let contentView = ContentView(settings: settingsManager)
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 600),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
-            backing: .buffered,
-            defer: false
-        )
-
-        window.contentView = NSHostingView(rootView: contentView)
-        window.title = "BuenMouse"
-        window.center()
-        window.setFrameAutosaveName("BuenMouseMainWindow")
-
-        // Keep reference
-        mainWindow = window
-
-        // Show it
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
-
-        os_log("New window created and shown", log: .default, type: .info)
-    }
-
-    private func hideWindow() {
-        if let window = mainWindow {
-            window.orderOut(nil)
-            os_log("Window hidden", log: .default, type: .info)
-        } else {
-            // Try to find and hide any app window
-            for window in NSApp.windows {
-                if window.contentView != nil && !window.title.isEmpty {
-                    window.orderOut(nil)
-                }
-            }
-        }
-    }
-
-    // MARK: - Public Methods for Settings
-    func updateStatusBarIcon() {
-        guard let button = statusItem?.button else { return }
-
-        let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
-
-        if settingsManager.isMonitoringActive {
-            // Active: filled mouse icon
-            if let image = NSImage(systemSymbolName: "computermouse.fill", accessibilityDescription: "BuenMouse - Active") {
-                button.image = image.withSymbolConfiguration(config)
-                button.contentTintColor = nil // Default color
-            }
-        } else {
-            // Inactive: mouse with slash (disabled look)
-            if let image = NSImage(systemSymbolName: "computermouse", accessibilityDescription: "BuenMouse - Inactive") {
-                button.image = image.withSymbolConfiguration(config)
-                button.contentTintColor = .gray
-            }
-        }
-    }
-
-    // Called when monitoring changes from Settings UI
-    func onMonitoringChanged() {
-        applyMonitoringChange()
     }
 }

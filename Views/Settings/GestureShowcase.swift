@@ -1,45 +1,9 @@
 import SwiftUI
 
-// MARK: - Gesture Types
-
-enum GesturePreviewType: CaseIterable {
-    case missionControl
-    case scrollZoom
-    case invertScroll
-    case spaceNavigation
-
-    var title: String {
-        switch self {
-        case .missionControl:  return "Middle Click → Mission Control"
-        case .spaceNavigation: return "Middle Drag → Switch Spaces"
-        case .scrollZoom:      return "⌃ + Scroll → Zoom In / Out"
-        case .invertScroll:    return "Invert Scroll → Natural Direction"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .missionControl:  return "Press the scroll wheel to open Mission Control"
-        case .spaceNavigation: return "Hold the scroll wheel and drag horizontally"
-        case .scrollZoom:      return "Hold Control and use the scroll wheel"
-        case .invertScroll:    return "Reverse the mouse wheel scroll direction"
-        }
-    }
-
-    var accent: Color {
-        switch self {
-        case .missionControl:  return .purple
-        case .spaceNavigation: return .blue
-        case .scrollZoom:      return .green
-        case .invertScroll:    return .green
-        }
-    }
-}
-
 // MARK: - Gesture Showcase
 
 /// Auto-rotating carousel that demonstrates each gesture one at a time.
-/// Placed once at the top of ContentView so toggles below stay clean.
+/// Placed once at the top of SettingsView so toggles below stay clean.
 struct GestureShowcase<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
     /// Lets the parent know which slide is on screen so it can adjust the
@@ -60,10 +24,10 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
     /// Binds the current slide to the matching settings property.
     private var currentBinding: Binding<Bool> {
         switch current {
-        case .missionControl:  return $settings.enableMissionControl
+        case .missionControl: return $settings.enableMissionControl
         case .spaceNavigation: return $settings.enableSpaceNavigation
-        case .scrollZoom:      return $settings.enableScrollZoom
-        case .invertScroll:    return $settings.invertScroll
+        case .scrollZoom: return $settings.enableScrollZoom
+        case .invertScroll: return $settings.invertScroll
         }
     }
 
@@ -73,10 +37,10 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
     private func isEnabled(_ type: GesturePreviewType) -> Bool {
         guard settings.isMonitoringActive else { return false }
         switch type {
-        case .missionControl:  return settings.enableMissionControl
+        case .missionControl: return settings.enableMissionControl
         case .spaceNavigation: return settings.enableSpaceNavigation
-        case .scrollZoom:      return settings.enableScrollZoom
-        case .invertScroll:    return settings.invertScroll
+        case .scrollZoom: return settings.enableScrollZoom
+        case .invertScroll: return settings.invertScroll
         }
     }
 
@@ -123,18 +87,20 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
             .animation(.spring(response: 0.28, dampingFraction: 0.6), value: cardPressed)
             .contentShape(Rectangle())
             .onTapGesture { handleCardTap() }
-            .help(canToggle
-                  ? "Tap to \(isCurrentOn ? "disable" : "enable") this gesture"
-                  : "Turn on Gesture Monitoring to enable")
+            .help(
+                canToggle
+                    ? "Tap to \(isCurrentOn ? "disable" : "enable") this gesture"
+                    : "Turn on Gesture Monitoring to enable")
 
             // No inline toggles — the On/Off badge plus card-tap handle activation.
             // Space Navigation's extras (slider + invert drag) appear only when ON.
             if current == .spaceNavigation && settings.enableSpaceNavigation {
                 spaceNavExtras
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .move(edge: .top)).combined(with: .scale(scale: 0.97, anchor: .top)),
-                        removal: .opacity.combined(with: .move(edge: .top))
-                    ))
+                    .transition(
+                        .asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .top)).combined(with: .scale(scale: 0.97, anchor: .top)),
+                            removal: .opacity.combined(with: .move(edge: .top))
+                        ))
             }
 
             HStack(spacing: 14) {
@@ -166,7 +132,6 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
         .onDisappear { stopAllTimers() }
     }
 
-
     @ViewBuilder
     private var spaceNavExtras: some View {
         let extrasDisabled = !canToggle || !settings.enableSpaceNavigation
@@ -182,13 +147,15 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
                     .contentTransition(.numericText())
                     .animation(.easeOut(duration: 0.2), value: settings.dragThreshold)
 
-                Toggle(isOn: Binding(
-                    get: { settings.invertDragDirection },
-                    set: { newValue in
-                        settings.invertDragDirection = newValue
-                        pauseAndScheduleResume()
-                    }
-                )) {
+                Toggle(
+                    isOn: Binding(
+                        get: { settings.invertDragDirection },
+                        set: { newValue in
+                            settings.invertDragDirection = newValue
+                            pauseAndScheduleResume()
+                        }
+                    )
+                ) {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.left.arrow.right")
                             .font(.system(size: 10, weight: .semibold))
@@ -413,17 +380,19 @@ struct GesturePreviewCard: View {
     }
 
     private func stopAnimating() {
-        directionTimer?.invalidate(); directionTimer = nil
-        clickTimer?.invalidate(); clickTimer = nil
+        directionTimer?.invalidate()
+        directionTimer = nil
+        clickTimer?.invalidate()
+        clickTimer = nil
     }
 
     @ViewBuilder
     private var content: some View {
         switch type {
-        case .missionControl:  missionControl
+        case .missionControl: missionControl
         case .spaceNavigation: spaceNavigation
-        case .scrollZoom:      scrollZoom
-        case .invertScroll:    invertScroll
+        case .scrollZoom: scrollZoom
+        case .invertScroll: invertScroll
         }
     }
 
@@ -643,28 +612,22 @@ struct GesturePreviewCard: View {
 // MARK: - Preview support
 
 #if DEBUG
-final class PreviewSettings: SettingsProtocol {
-    @Published var isMonitoringActive: Bool = true
-    @Published var invertDragDirection: Bool = false
-    @Published var dragThreshold: Double = 40
-    @Published var invertScroll: Bool = false
-    @Published var enableScrollZoom: Bool = false
-    @Published var enableMissionControl: Bool = true
-    @Published var enableSpaceNavigation: Bool = true
-    @Published var isDarkMode: Bool = false
-    @Published var followSystemAppearance: Bool = true
-    @Published var launchAtLogin: Bool = false
+    final class PreviewSettings: SettingsProtocol {
+        @Published var isMonitoringActive: Bool = true
+        @Published var invertDragDirection: Bool = false
+        @Published var dragThreshold: Double = 100
+        @Published var invertScroll: Bool = false
+        @Published var enableScrollZoom: Bool = false
+        @Published var enableMissionControl: Bool = true
+        @Published var enableSpaceNavigation: Bool = true
+        @Published var launchAtLogin: Bool = false
 
-    func resetToDefaults() {}
-}
+        func resetToDefaults() {}
+    }
 
-#Preview("Full Settings") {
-    ContentView(settings: PreviewSettings())
-}
-
-#Preview("Showcase only") {
-    GestureShowcase(settings: PreviewSettings())
-        .padding(32)
-        .frame(width: 450)
-}
+    #Preview("Showcase only") {
+        GestureShowcase(settings: PreviewSettings())
+            .padding(32)
+            .frame(width: 450)
+    }
 #endif

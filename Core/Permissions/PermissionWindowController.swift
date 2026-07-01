@@ -28,14 +28,18 @@ final class PermissionWindowController: NSWindowController, NSWindowDelegate {
             return
         }
 
-        let size = PermissionRequirementsView.windowSize
         let view = PermissionRequirementsView(
             onActivate: { [weak self] in self?.handleActivate() },
             onClose: { [weak self] in self?.close() }
         )
         let hosting = NSHostingController(rootView: view)
-        hosting.view.frame = CGRect(origin: .zero, size: size)
+        // Track the SwiftUI content size so the window always hugs the
+        // content — no dead space, and state changes resize it for free.
+        hosting.sizingOptions = .preferredContentSize
         hostingController = hosting
+
+        let size = hosting.sizeThatFits(
+            in: NSSize(width: PermissionRequirementsView.contentWidth, height: .greatestFiniteMagnitude))
 
         let win = NSWindow(
             contentRect: NSRect(origin: .zero, size: size),
@@ -52,15 +56,35 @@ final class PermissionWindowController: NSWindowController, NSWindowDelegate {
         win.standardWindowButton(.miniaturizeButton)?.isHidden = true
         win.standardWindowButton(.zoomButton)?.isHidden = true
         win.contentViewController = hosting
+        win.setContentSize(size)
         win.center()
         self.window = win
 
         hasNotified = AccessibilityPermission.isGranted
         startPolling()
 
+        presentAnimated(win)
+    }
+
+    /// Gentle fade-and-rise entrance instead of popping into place.
+    private func presentAnimated(_ win: NSWindow) {
+        let finalFrame = win.frame
+        var startFrame = finalFrame
+        startFrame.origin.y -= 14
+
+        win.alphaValue = 0
+        win.setFrame(startFrame, display: false)
+
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
         win.orderFrontRegardless()
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.28
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            win.animator().setFrame(finalFrame, display: true)
+            win.animator().alphaValue = 1
+        }
     }
 
     override func close() {

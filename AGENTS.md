@@ -8,24 +8,42 @@ commits, changelogs, and durable technical docs in English.
 ## Product
 
 - macOS menu bar app for advanced mouse gestures.
-- Minimum macOS: 13.0.
+- Minimum macOS: 15.0.
 - UI stack: SwiftUI + AppKit.
 - Main target: `BuenMouse` in `BuenMouse.xcodeproj`.
 - Status-bar-first app; no Dock icon.
-- Accessibility and Input Monitoring permissions are required for gesture
-  handling.
+- Accessibility permission is required for the event tap; Apple Events is
+  used for Mission Control / Spaces actions.
 
 ## Architecture
 
-- `BuenMouseApp.swift`: app entry point.
-- `AppDelegate.swift`: window lifecycle and menu bar dropdown.
-- `ServiceManager.swift`: launch-at-login integration.
+Status-bar-first: the SwiftUI `App` body is an empty `Settings` scene; every
+real window is created and owned by AppKit controllers. Never reintroduce a
+`WindowGroup` — it opens (and flashes) a window on every launch.
+
+- `BuenMouseApp.swift`: hollow entry point (`Settings { EmptyView() }`).
+- `AppDelegate.swift`: app lifecycle, event stack wiring, permission
+  onboarding, wake-from-sleep tap re-assert. Reopen is a no-op by design.
+- `ServiceManager.swift`: thin `SMAppService` wrapper for launch-at-login.
+- `Core/MenuBar`: `MenuBarStatusController` — status item, transient
+  `NSPopover` panel (SwiftUI content, self-sizing), Settings/About windows.
 - `Core/EventHandling`: event tap setup, gesture state, scroll inversion, and
-  Ctrl-scroll zoom.
-- `Core/Permissions`: Accessibility onboarding and System Settings helper UI.
+  Ctrl-scroll zoom. The tap mask excludes `mouseMoved` and the callback
+  re-enables the tap on `tapDisabledByTimeout` — keep both properties; the
+  app runs 24/7.
+- `Core/Permissions`: Accessibility onboarding window (content-hugging) and
+  the drag-to-grant System Settings overlay.
 - `Core/Settings`: persisted settings and protocol surface for views.
 - `Core/SystemActions`: local macOS actions such as Mission Control / Spaces.
-- `Views`: settings surface, gesture previews, and permission requirements UI.
+- `Core/UI/Theme.swift`: brand accent (cyan) and shared animation constants.
+- `Views/MenuBar`: dropdown panel (header + gesture grid + action rows).
+- `Views/Settings`: consolidated settings window (showcase + general options).
+- `Views/About`, `Views/Permissions`, `Views/Components`: About panel,
+  onboarding content, shared gesture metadata.
+
+UI conventions: SwiftUI content hosted in AppKit windows via
+`NSHostingController`; window content is rebuilt on each show and dropped on
+close so timers never run hidden; appearance always follows the system.
 
 ## Guardrails
 
@@ -69,8 +87,8 @@ xcodebuild -project BuenMouse.xcodeproj -scheme BuenMouse \
 Use `make install-dev` for routine local app testing on Steven's Mac after he
 has approved installation/relaunch for the task. It builds a signed Release app,
 reinstalls to `/Applications/BuenMouse.app`, and relaunches it. Keeping the same
-app name, bundle id, and Apple Development signing identity preserves
-Accessibility and Input Monitoring grants across rebuilds.
+app name, bundle id, and Apple Development signing identity preserves the
+Accessibility grant across rebuilds.
 
 Useful runtime log stream:
 

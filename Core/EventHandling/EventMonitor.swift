@@ -1,66 +1,49 @@
-import Cocoa
 import ApplicationServices
+import Cocoa
 import os.log
 
-private func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
-    guard let refcon = refcon else { 
-        os_log("Event tap callback called with nil refcon", log: .default, type: .error)
-        return Unmanaged.passUnretained(event) 
+private func eventTapCallback(
+    proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?
+) -> Unmanaged<CGEvent>? {
+    guard let refcon = refcon else {
+        return Unmanaged.passUnretained(event)
     }
-    
-    let myself = Unmanaged<EventMonitor>.fromOpaque(refcon).takeUnretainedValue()
-    return myself.handleEvent(proxy: proxy, type: type, event: event)
+    let monitor = Unmanaged<EventMonitor>.fromOpaque(refcon).takeUnretainedValue()
+    return monitor.handleEvent(proxy: proxy, type: type, event: event)
 }
 
-final class EventMonitor: NSObject {
+/// Owns the CGEvent tap that powers every gesture. The app can stay running
+/// for weeks, so the tap only listens to the events gestures actually need
+/// and re-enables itself if macOS disables it (timeout or user input).
+final class EventMonitor {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
-    private weak var gestureHandler: GestureHandler?
-    private weak var scrollHandler: ScrollHandler?
-    private var isMonitoring = false
-    
-    // Performance: Event batching system
-    private struct EventBatch {
-        let type: CGEventType
-        let event: CGEvent
-        let timestamp: TimeInterval
-    }
-    
-    private var eventQueue: [EventBatch] = []
-    private var batchTimer: Timer?
-    private let batchProcessingQueue = DispatchQueue(label: "com.buenmouse.eventbatch", qos: .userInteractive)
-    private let maxBatchSize = 10
-    private let batchTimeout: TimeInterval = 0.001 // 1ms batching
-    
-    // Performance optimization: Pre-computed event mask
-    private static let eventMask: CGEventMask = {
-        let mask: CGEventMask = 
-            (1 << CGEventType.otherMouseDown.rawValue) |
-            (1 << CGEventType.otherMouseUp.rawValue) |
-            (1 << CGEventType.mouseMoved.rawValue) |
-            (1 << CGEventType.otherMouseDragged.rawValue) |
-            (1 << CGEventType.leftMouseDown.rawValue) |
-            (1 << CGEventType.leftMouseUp.rawValue) |
-            (1 << CGEventType.leftMouseDragged.rawValue) |
-            (1 << CGEventType.scrollWheel.rawValue)
-        return mask
-    }()
-    
+    private let gestureHandler: GestureHandler
+    private let scrollHandler: ScrollHandler
+
+    /// `mouseMoved` is intentionally NOT tapped: middle-button drags arrive as
+    /// `otherMouseDragged`, so plain cursor movement never wakes the process.
+    private static let eventMask: CGEventMask =
+        (1 << CGEventType.otherMouseDown.rawValue)
+        | (1 << CGEventType.otherMouseUp.rawValue)
+        | (1 << CGEventType.otherMouseDragged.rawValue)
+        | (1 << CGEventType.leftMouseDown.rawValue)
+        | (1 << CGEventType.leftMouseUp.rawValue)
+        | (1 << CGEventType.leftMouseDragged.rawValue)
+        | (1 << CGEventType.scrollWheel.rawValue)
+
     init(gestureHandler: GestureHandler, scrollHandler: ScrollHandler) {
         self.gestureHandler = gestureHandler
         self.scrollHandler = scrollHandler
-        super.init()
-        os_log("EventMonitor initialized", log: .default, type: .info)
     }
-    
+
+    var isMonitoring: Bool { eventTap != nil }
+
     func startMonitoring() {
-        guard eventTap == nil else { 
-            os_log("EventMonitor already monitoring", log: .default, type: .info)
-            return 
-        }
-        
+        guard eventTap == nil else { return }
+
         guard AXIsProcessTrusted() else {
-            os_log("Cannot start monitoring: accessibility permissions not granted", log: .default, type: .error)
+            os_log("Cannot start monitoring: accessibility permission not granted", log: .default, type: .error)
             return
         }
 
@@ -77,166 +60,76 @@ final class EventMonitor: NSObject {
             os_log("Failed to create event tap", log: .default, type: .error)
             return
         }
-        
+
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         guard let source = runLoopSource else {
             os_log("Failed to create run loop source", log: .default, type: .error)
             cleanup()
             return
         }
-        
+
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
-        isMonitoring = true
-        
-        os_log("EventMonitor started successfully", log: .default, type: .info)
+        os_log("EventMonitor started", log: .default, type: .info)
     }
 
     func stopMonitoring() {
-        guard isMonitoring else {
-            os_log("EventMonitor not currently monitoring", log: .default, type: .info)
-            return
-        }
-        
+        guard eventTap != nil else { return }
         cleanup()
+        gestureHandler.resetState()
         os_log("EventMonitor stopped", log: .default, type: .info)
     }
-    
+
+    /// Cheap safety net after sleep/wake: if the tap exists but macOS left it
+    /// disabled, turn it back on.
+    func reassertTap() {
+        guard let tap = eventTap, !CGEvent.tapIsEnabled(tap: tap) else { return }
+        CGEvent.tapEnable(tap: tap, enable: true)
+        gestureHandler.resetState()
+        os_log("Event tap re-enabled after wake", log: .default, type: .info)
+    }
+
     private func cleanup() {
         if let tap = eventTap {
             CGEvent.tapEnable(tap: tap, enable: false)
             CFMachPortInvalidate(tap)
         }
-        
         if let source = runLoopSource {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
         }
-        
         eventTap = nil
         runLoopSource = nil
-        isMonitoring = false
     }
-    
-    func requestPermissions() {
-        let isTrusted = AXIsProcessTrusted()
-        os_log("Checking accessibility permissions: %{public}@", log: .default, type: .info, isTrusted ? "granted" : "not granted")
-        
-        if !isTrusted {
-            os_log("Requesting accessibility permissions...", log: .default, type: .info)
-            let opts: NSDictionary = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as NSString: true]
-            _ = AXIsProcessTrustedWithOptions(opts)
-        }
-    }
-    
-    func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // Performance: For high-frequency events, use batching
+
+    fileprivate func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         switch type {
+        case .tapDisabledByTimeout, .tapDisabledByUserInput:
+            // macOS disables slow or user-interrupted taps. For an always-on
+            // app this must never be terminal — re-enable and reset gestures.
+            if let tap = eventTap {
+                CGEvent.tapEnable(tap: tap, enable: true)
+                os_log("Event tap re-enabled after system disable", log: .default, type: .info)
+            }
+            gestureHandler.resetState()
+            return Unmanaged.passUnretained(event)
+
         case .scrollWheel:
-            // ScrollWheel needs immediate processing for invert scroll to work
-            return handleImmediateEvent(type: type, event: event)
-            
-        case .mouseMoved:
-            // Batch mouse movement events for performance
-            return handleBatchedEvent(type: type, event: event)
-            
-        case .otherMouseDown, .otherMouseUp, .otherMouseDragged:
-            // Process critical events immediately
-            return handleImmediateEvent(type: type, event: event)
-            
-        case .leftMouseDown, .leftMouseUp, .leftMouseDragged:
-            // Process critical events immediately
-            return handleImmediateEvent(type: type, event: event)
-            
+            return scrollHandler.handleEvent(type: type, event: event) == .consumed
+                ? nil
+                : Unmanaged.passUnretained(event)
+
+        case .otherMouseDown, .otherMouseUp, .otherMouseDragged,
+            .leftMouseDown, .leftMouseUp, .leftMouseDragged:
+            return gestureHandler.handleEvent(type: type, event: event) == .consumed
+                ? nil
+                : Unmanaged.passUnretained(event)
+
         default:
-            // Unknown event type - pass through
             return Unmanaged.passUnretained(event)
         }
     }
-    
-    private func handleBatchedEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        let batch = EventBatch(type: type, event: event, timestamp: CFAbsoluteTimeGetCurrent())
-        
-        batchProcessingQueue.async { [weak self] in
-            guard let self = self else { return }
-            
-            self.eventQueue.append(batch)
-            
-            // Process batch if it reaches max size
-            if self.eventQueue.count >= self.maxBatchSize {
-                self.processBatch()
-            } else {
-                // Schedule timer if not already running
-                if self.batchTimer == nil {
-                    DispatchQueue.main.async {
-                        self.batchTimer = Timer.scheduledTimer(withTimeInterval: self.batchTimeout, repeats: false) { _ in
-                            self.batchProcessingQueue.async {
-                                self.processBatch()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // For batched events, we assume they might be consumed later
-        return Unmanaged.passUnretained(event)
-    }
-    
-    private func handleImmediateEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // Process critical events immediately for responsiveness
-        switch type {
-        case .scrollWheel:
-            if let scrollHandler = scrollHandler {
-                let result = scrollHandler.handleEvent(type: type, event: event)
-                if result == .consumed {
-                    return nil
-                }
-            }
-        case .otherMouseDown, .otherMouseUp, .otherMouseDragged,
-             .leftMouseDown, .leftMouseUp, .leftMouseDragged:
-            if let gestureHandler = gestureHandler {
-                let result = gestureHandler.handleEvent(type: type, event: event)
-                if result == .consumed {
-                    return nil
-                }
-            }
-        default:
-            break
-        }
-        
-        return Unmanaged.passUnretained(event)
-    }
-    
-    private func processBatch() {
-        guard !eventQueue.isEmpty else { return }
-        
-        let currentBatch = eventQueue
-        eventQueue.removeAll()
-        batchTimer?.invalidate()
-        batchTimer = nil
-        
-        // Process events in batch, filtering out duplicates and old events
-        let now = CFAbsoluteTimeGetCurrent()
-        let validEvents = currentBatch.filter { now - $0.timestamp < 0.1 } // Keep only recent events
-        
-        for eventBatch in validEvents {
-            switch eventBatch.type {
-            case .scrollWheel:
-                if let scrollHandler = scrollHandler {
-                    _ = scrollHandler.handleEvent(type: eventBatch.type, event: eventBatch.event)
-                }
-            case .mouseMoved:
-                if let gestureHandler = gestureHandler {
-                    _ = gestureHandler.handleEvent(type: eventBatch.type, event: eventBatch.event)
-                }
-            default:
-                break
-            }
-        }
-    }
-    
+
     deinit {
         cleanup()
-        os_log("EventMonitor deinitialized", log: .default, type: .info)
     }
 }

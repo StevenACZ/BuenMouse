@@ -3,17 +3,19 @@ import SwiftUI
 import os.log
 
 final class SettingsManager: ObservableObject, SettingsProtocol {
-    // MARK: - Referencia al AppDelegate
-    weak var appDelegate: AppDelegate?
+    /// Fired when the master switch flips so the app can start/stop the tap.
+    var onMonitoringChanged: (() -> Void)?
 
     // MARK: - Persisted Settings
+
     @Published var isMonitoringActive: Bool = {
         let value = UserDefaults.standard.object(forKey: "isMonitoringActive")
-        return value as? Bool ?? true // Default to true for first launch
-    }() {
+        return value as? Bool ?? true  // Default to true for first launch
+    }()
+    {
         didSet {
             UserDefaults.standard.set(isMonitoringActive, forKey: "isMonitoringActive")
-            appDelegate?.onMonitoringChanged()
+            onMonitoringChanged?()
         }
     }
 
@@ -27,7 +29,8 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
             return min(250, max(50, stored))
         }
         return 100.0
-    }() {
+    }()
+    {
         didSet { UserDefaults.standard.set(dragThreshold, forKey: "dragThreshold") }
     }
 
@@ -42,80 +45,25 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
     @Published var enableMissionControl: Bool = {
         let value = UserDefaults.standard.object(forKey: "enableMissionControl")
         return value as? Bool ?? true
-    }() {
+    }()
+    {
         didSet { UserDefaults.standard.set(enableMissionControl, forKey: "enableMissionControl") }
     }
 
     @Published var enableSpaceNavigation: Bool = {
         let value = UserDefaults.standard.object(forKey: "enableSpaceNavigation")
         return value as? Bool ?? true
-    }() {
+    }()
+    {
         didSet { UserDefaults.standard.set(enableSpaceNavigation, forKey: "enableSpaceNavigation") }
     }
 
-    @Published var isDarkMode: Bool = UserDefaults.standard.bool(forKey: "isDarkMode") {
-        didSet {
-            UserDefaults.standard.set(isDarkMode, forKey: "isDarkMode")
-            updateAppearance()
-        }
-    }
-
-    @Published var followSystemAppearance: Bool = {
-        let value = UserDefaults.standard.object(forKey: "followSystemAppearance")
-        return value as? Bool ?? true // Default to true
-    }() {
-        didSet {
-            UserDefaults.standard.set(followSystemAppearance, forKey: "followSystemAppearance")
-            updateAppearance()
-        }
-    }
-
+    /// Seeded from the real SMAppService state so the toggle never lies.
     @Published var launchAtLogin: Bool = ServiceManager.isEnabled {
         didSet {
-            if launchAtLogin {
-                _ = ServiceManager.register()
-            } else {
-                _ = ServiceManager.unregister()
-            }
+            guard oldValue != launchAtLogin else { return }
+            ServiceManager.setEnabled(launchAtLogin)
         }
-    }
-
-
-    func updateAppearance() {
-        let updateBlock = {
-            if self.followSystemAppearance {
-                NSApp.appearance = nil
-                os_log("Appearance set to follow system", log: .default, type: .info)
-            } else {
-                let appearance = NSAppearance(named: self.isDarkMode ? .darkAqua : .aqua)
-                NSApp.appearance = appearance
-                os_log("Appearance set to: %{public}@", log: .default, type: .info, self.isDarkMode ? "dark" : "light")
-            }
-        }
-
-        if Thread.isMainThread {
-            updateBlock()
-        } else {
-            DispatchQueue.main.async(execute: updateBlock)
-        }
-    }
-
-    func setupAppearanceObserver() {
-        DistributedNotificationCenter.default.addObserver(
-            forName: Notification.Name("AppleInterfaceThemeChangedNotification"),
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            guard let self = self else { return }
-
-            if self.followSystemAppearance {
-                os_log("System appearance changed, updating UI", log: .default, type: .info)
-                self.objectWillChange.send()
-                self.updateAppearance()
-            }
-        }
-
-        os_log("Appearance observer set up", log: .default, type: .info)
     }
 
     func resetToDefaults() {
@@ -128,9 +76,5 @@ final class SettingsManager: ObservableObject, SettingsProtocol {
         enableScrollZoom = false
         enableMissionControl = true
         enableSpaceNavigation = true
-        isDarkMode = false
-        followSystemAppearance = true
-
-        os_log("All settings reset to defaults", log: .default, type: .info)
     }
 }

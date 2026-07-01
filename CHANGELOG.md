@@ -6,8 +6,20 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-07-01
+
 ### Added
 
+- Modern menu bar panel: clicking the status icon now opens a SwiftUI dropdown
+  with the app header, a master gestures switch, a visual 2×2 gesture grid with
+  instant toggles, and Settings / About / Quit rows — replacing the old
+  AppKit `NSMenu` list.
+- Status icon press bounce and panel content that always sizes to fit.
+- Accessibility warning banner in the panel with a shortcut back to the
+  guided onboarding window when permission is missing.
+- Event tap resiliency for an always-on app: the tap re-enables itself after
+  `tapDisabledByTimeout` / `tapDisabledByUserInput` and re-asserts after wake
+  from sleep.
 - Standard Swift project workflow tooling: shared formatting config, Makefile
   checks, optional Lefthook hooks, public agent guide, and contributor/security
   docs.
@@ -17,8 +29,35 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Settings moved into a single consolidated window: gesture showcase carousel
+  plus a General section (Launch at Login, Reset to Defaults). The menu bar
+  panel stays lightweight.
+- Permission onboarding window now hugs its content (no fixed height or dead
+  space), enters with a fade-and-rise animation, and celebrates the grant with
+  a green flash before closing.
+- Brand accent unified to the cyan of the app icon across panel, About, and
+  onboarding.
+- Launch at Login is no longer force-registered on every launch; it is enabled
+  once on first run and the toggle always reflects the real `SMAppService`
+  state.
+- Middle-button clicks pass through to native behavior when both middle-button
+  gestures (Mission Control, Switch Spaces) are disabled.
 - Moved local signing identity out of the tracked Xcode project and into the
   ignored `Signing.xcconfig` override used for developer installs.
+
+### Fixed
+
+- The settings window no longer flashes on launch or when reopening the app:
+  the SwiftUI `WindowGroup` was removed and the app is now fully status-bar
+  driven, so relaunching shows nothing.
+
+### Removed
+
+- Manual Appearance override (System / Light / Dark). The UI now always
+  follows the system theme.
+- Event "batching" machinery in the event monitor, and the `mouseMoved` event
+  tap subscription — plain cursor movement no longer wakes the process, and
+  gesture events are handled synchronously on the tap callback.
 
 ## [2.1.2] - 2026-05-29
 

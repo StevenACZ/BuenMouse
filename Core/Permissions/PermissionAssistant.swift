@@ -25,7 +25,7 @@ final class PermissionAssistant: NSObject {
         didPresentCurrentOverlay = false
         isActive = true
 
-        let accent = NSColor.systemBlue
+        let accent = Theme.nsAccent
         overlayController = PermissionOverlayWindowController(
             hostApp: PermissionHostApp.current(),
             accentColor: accent

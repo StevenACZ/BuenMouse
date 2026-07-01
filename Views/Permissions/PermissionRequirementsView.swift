@@ -1,45 +1,46 @@
-import SwiftUI
 import Combine
+import SwiftUI
 
 /// Compact, single-permission onboarding view. Polls the accessibility
 /// status every 1.5s and on `didBecomeActive` so it auto-dismisses the
-/// moment the user grants permission.
+/// moment the user grants permission. The window hugs this content —
+/// there is no fixed height, so there is never dead space.
 struct PermissionRequirementsView: View {
-    static let windowSize = CGSize(width: 480, height: 230)
+    static let contentWidth: CGFloat = 480
 
     let onActivate: () -> Void
     let onClose: () -> Void
 
     @State private var isGranted: Bool = AccessibilityPermission.isGranted
+    @State private var grantFlash: Int = 0
     @Environment(\.colorScheme) private var colorScheme
     private let refreshTimer = Timer.publish(every: 1.5, on: .main, in: .common).autoconnect()
 
-    private let accent: Color = .blue
+    private let accent: Color = Theme.accent
 
     var body: some View {
         ZStack {
             backgroundLayer
 
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 14) {
                 header
-
-                Spacer(minLength: 10)
 
                 if isGranted {
                     successCard
+                        .transition(.scale(scale: 0.96).combined(with: .opacity))
                 } else {
                     permissionCard
+                        .transition(.scale(scale: 0.96).combined(with: .opacity))
                 }
-
-                Spacer(minLength: 10)
 
                 footer
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)
-            .padding(.bottom, 12)
+            .padding(.bottom, 14)
         }
-        .frame(width: Self.windowSize.width, height: Self.windowSize.height)
+        .frame(width: Self.contentWidth)
+        .fixedSize(horizontal: false, vertical: true)
         .onAppear { refresh() }
         .onReceive(refreshTimer) { _ in refresh() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
@@ -147,6 +148,7 @@ struct PermissionRequirementsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .background(cardBackground(accent: .green))
+        .grantCelebration(trigger: grantFlash, cornerRadius: 16)
     }
 
     private var footer: some View {
@@ -208,14 +210,50 @@ struct PermissionRequirementsView: View {
 
     private func refresh() {
         let current = AccessibilityPermission.isGranted
-        if current != isGranted {
-            withAnimation(.easeInOut(duration: 0.3)) { isGranted = current }
+        guard current != isGranted else { return }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { isGranted = current }
+        if current {
+            grantFlash += 1
         }
     }
 }
 
-#if DEBUG
-#Preview("Pending") {
-    PermissionRequirementsView(onActivate: {}, onClose: {})
+// MARK: - Grant celebration
+
+/// One-shot green glow that fires each time `trigger` increments — the
+/// visible "permission granted" moment.
+private struct GrantCelebrationModifier: ViewModifier {
+    let trigger: Int
+    let cornerRadius: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .phaseAnimator([false, true], trigger: trigger) { view, flashing in
+                view
+                    .scaleEffect(flashing ? 1.02 : 1.0)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .strokeBorder(Color.green.opacity(flashing ? 0.85 : 0), lineWidth: 2.5)
+                            .blur(radius: 1.5)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(Color.green.opacity(flashing ? 0.10 : 0))
+                    )
+            } animation: { flashing in
+                flashing ? .spring(duration: 0.25) : .easeOut(duration: 0.55)
+            }
+    }
 }
+
+extension View {
+    fileprivate func grantCelebration(trigger: Int, cornerRadius: CGFloat) -> some View {
+        modifier(GrantCelebrationModifier(trigger: trigger, cornerRadius: cornerRadius))
+    }
+}
+
+#if DEBUG
+    #Preview("Pending") {
+        PermissionRequirementsView(onActivate: {}, onClose: {})
+    }
 #endif
