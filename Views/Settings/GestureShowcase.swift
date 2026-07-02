@@ -6,6 +6,7 @@ import SwiftUI
 /// Placed once at the top of SettingsView so toggles below stay clean.
 struct GestureShowcase<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
+    @ObservedObject private var localizationManager = LocalizationManager.shared
     /// Lets the parent know which slide is on screen so it can adjust the
     /// surrounding layout (e.g. center short slides, top-align the long one).
     var onSlideChange: ((GesturePreviewType) -> Void)? = nil
@@ -89,8 +90,10 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
             .onTapGesture { handleCardTap() }
             .help(
                 canToggle
-                    ? "Tap to \(isCurrentOn ? "disable" : "enable") this gesture"
-                    : "Turn on Gesture Monitoring to enable")
+                    ? (isCurrentOn
+                        ? "showcase.card.help.disable".localized
+                        : "showcase.card.help.enable".localized)
+                    : "showcase.card.help.monitoring_off".localized)
 
             // No inline toggles — the On/Off badge plus card-tap handle activation.
             // Space Navigation's extras (slider + invert drag) appear only when ON.
@@ -137,7 +140,7 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
         let extrasDisabled = !canToggle || !settings.enableSpaceNavigation
         VStack(spacing: 8) {
             HStack(spacing: 10) {
-                Text("Drag distance to switch")
+                Text("showcase.drag_distance".localized)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -159,14 +162,14 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.left.arrow.right")
                             .font(.system(size: 10, weight: .semibold))
-                        Text("Invert")
+                        Text("showcase.invert".localized)
                             .font(.caption)
                     }
                 }
                 .toggleStyle(.button)
                 .controlSize(.small)
                 .disabled(extrasDisabled)
-                .help("Reverse the drag direction")
+                .help("showcase.invert.help".localized)
             }
 
             Slider(
@@ -189,7 +192,7 @@ struct GestureShowcase<Settings: SettingsProtocol>: View {
             Circle()
                 .fill(on ? current.accent : Color.secondary.opacity(0.5))
                 .frame(width: 6, height: 6)
-            Text(on ? "On" : "Off")
+            Text(on ? "showcase.badge.on".localized : "showcase.badge.off".localized)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(on ? current.accent : .secondary)
         }

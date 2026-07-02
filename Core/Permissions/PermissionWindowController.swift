@@ -47,7 +47,7 @@ final class PermissionWindowController: NSWindowController, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        win.title = "BuenMouse — Setup"
+        win.title = "permissions.window.title".localized
         win.titleVisibility = .hidden
         win.titlebarAppearsTransparent = true
         win.isReleasedWhenClosed = false

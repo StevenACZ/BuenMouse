@@ -28,6 +28,7 @@ struct MenuBarPanelHost: View {
 /// and the Settings / About / Quit rows.
 struct MenuBarView<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
+    @ObservedObject private var localizationManager = LocalizationManager.shared
     let isPermissionGranted: Bool
     let openSettings: () -> Void
     let openAbout: () -> Void
@@ -56,19 +57,21 @@ struct MenuBarView<Settings: SettingsProtocol>: View {
 
             ActionRow(
                 icon: "gearshape",
-                title: "Settings",
-                subtitle: "Gestures, drag distance, launch at login",
+                title: "menubar.row.settings.title".localized,
+                subtitle: "menubar.row.settings.subtitle".localized,
                 action: openSettings
             )
 
             Divider().padding(.horizontal, 16)
 
-            ActionRow(icon: "info.circle", title: "About BuenMouse", action: openAbout)
+            ActionRow(icon: "info.circle", title: "menubar.row.about".localized, action: openAbout)
 
             Divider().padding(.horizontal, 16)
 
-            ActionRow(icon: "power", title: "Quit BuenMouse", isDestructive: true, action: quit)
-                .padding(.bottom, 4)
+            ActionRow(
+                icon: "power", title: "menubar.row.quit".localized, isDestructive: true, action: quit
+            )
+            .padding(.bottom, 4)
         }
         .frame(width: Theme.Layout.panelWidth)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -86,9 +89,9 @@ struct MenuBarView<Settings: SettingsProtocol>: View {
     }
 
     private var statusLine: String {
-        if !isPermissionGranted { return "Accessibility access needed" }
-        if !settings.isMonitoringActive { return "Gestures paused" }
-        return "\(enabledCount) of \(GesturePreviewType.allCases.count) gestures on"
+        if !isPermissionGranted { return "menubar.status.permission_needed".localized }
+        if !settings.isMonitoringActive { return "menubar.status.paused".localized }
+        return "menubar.status.gestures_on".localized(enabledCount, GesturePreviewType.allCases.count)
     }
 
     private var header: some View {
@@ -121,7 +124,9 @@ struct MenuBarView<Settings: SettingsProtocol>: View {
                 .labelsHidden()
                 .tint(Theme.accent)
                 .disabled(!isPermissionGranted)
-                .help(settings.isMonitoringActive ? "Pause all gestures" : "Resume gestures")
+                .help(
+                    settings.isMonitoringActive
+                        ? "menubar.toggle.help.pause".localized : "menubar.toggle.help.resume".localized)
         }
     }
 
@@ -202,7 +207,10 @@ private struct GestureTile: View {
         .opacity(isEnabled ? 1 : 0.45)
         .disabled(!isEnabled)
         .animation(Theme.Anim.spring, value: isOn)
-        .help(isOn ? "Disable \(type.shortTitle)" : "Enable \(type.shortTitle)")
+        .help(
+            isOn
+                ? "menubar.tile.help.disable".localized(type.shortTitle)
+                : "menubar.tile.help.enable".localized(type.shortTitle))
     }
 }
 

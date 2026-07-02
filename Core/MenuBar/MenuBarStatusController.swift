@@ -50,7 +50,7 @@ final class MenuBarStatusController: NSObject, NSPopoverDelegate, NSWindowDelega
         let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
         let active = settings.isMonitoringActive && AccessibilityPermission.isGranted
         let name = active ? "computermouse.fill" : "computermouse"
-        let description = active ? "BuenMouse — Active" : "BuenMouse — Paused"
+        let description = active ? "statusitem.active".localized : "statusitem.paused".localized
         let image = NSImage(systemSymbolName: name, accessibilityDescription: description)?
             .withSymbolConfiguration(config)
         image?.isTemplate = true

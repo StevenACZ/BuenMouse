@@ -66,7 +66,7 @@ Después de instalar, haz clic en el ícono de BuenMouse en la barra de menú. S
 
 Desde el panel puedes también:
 
-- **Settings** — ventana con el carrusel animado de gestos, distancia de arrastre, **Launch at Login** y **Reset to Defaults**
+- **Settings** — ventana con el carrusel animado de gestos, distancia de arrastre, **Launch at Login**, **idioma de la app (English / Español)** y **Reset to Defaults**
 - **About BuenMouse** — versión y links del proyecto
 - **Quit BuenMouse** — cierra la app
 

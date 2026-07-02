@@ -62,16 +62,16 @@ struct PermissionBanner: View {
                     .foregroundStyle(.orange)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Accessibility access needed")
+                    Text("menubar.banner.title".localized)
                         .font(.subheadline)
-                    Text("Gestures stay off until it's granted")
+                    Text("menubar.banner.subtitle".localized)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
 
                 Spacer()
 
-                Text("Fix")
+                Text("menubar.banner.fix".localized)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.orange)
                     .padding(.horizontal, 10)
