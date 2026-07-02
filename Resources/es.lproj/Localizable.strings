@@ -1,0 +1,97 @@
+/* Menu bar panel */
+"menubar.status.permission_needed" = "Se necesita acceso de Accesibilidad";
+"menubar.status.paused" = "Gestos en pausa";
+"menubar.status.gestures_on" = "%d de %d gestos activos";
+"menubar.toggle.help.pause" = "Pausar todos los gestos";
+"menubar.toggle.help.resume" = "Reanudar gestos";
+"menubar.row.settings.title" = "Ajustes";
+"menubar.row.settings.subtitle" = "Gestos, distancia de arrastre, inicio de sesión";
+"menubar.row.about" = "Acerca de BuenMouse";
+"menubar.row.quit" = "Salir de BuenMouse";
+"menubar.banner.title" = "Se necesita acceso de Accesibilidad";
+"menubar.banner.subtitle" = "Los gestos quedan apagados hasta concederlo";
+"menubar.banner.fix" = "Arreglar";
+"menubar.tile.help.enable" = "Activar %@";
+"menubar.tile.help.disable" = "Desactivar %@";
+
+/* Gestures */
+"gesture.mission_control.title" = "Clic central → Mission Control";
+"gesture.space_navigation.title" = "Arrastre central → Cambiar Spaces";
+"gesture.scroll_zoom.title" = "⌃ + Scroll → Acercar / Alejar";
+"gesture.invert_scroll.title" = "Invertir scroll → Dirección natural";
+"gesture.mission_control.subtitle" = "Presiona la rueda del mouse para abrir Mission Control";
+"gesture.space_navigation.subtitle" = "Mantén la rueda presionada y arrastra en horizontal";
+"gesture.scroll_zoom.subtitle" = "Mantén Control y usa la rueda del mouse";
+"gesture.invert_scroll.subtitle" = "Invierte la dirección del scroll de la rueda";
+"gesture.mission_control.short" = "Mission Control";
+"gesture.space_navigation.short" = "Cambiar Spaces";
+"gesture.scroll_zoom.short" = "Zoom con scroll";
+"gesture.invert_scroll.short" = "Invertir scroll";
+
+/* Settings window */
+"settings.subtitle" = "Gestos de mouse para macOS";
+"settings.status.active" = "Activo";
+"settings.status.paused" = "En pausa";
+"settings.status.help" = "Haz clic para pausar o reanudar el monitoreo de gestos";
+"settings.reset.alert.title" = "¿Restablecer todos los ajustes?";
+"settings.reset.alert.message" = "Esto restaura todas las preferencias de BuenMouse. No se puede deshacer.";
+"settings.reset.alert.confirm" = "Restablecer";
+"settings.reset.alert.cancel" = "Cancelar";
+"settings.launch_at_login.title" = "Abrir al iniciar sesión";
+"settings.launch_at_login.subtitle" = "Inicia BuenMouse cuando inicies sesión";
+"settings.language.title" = "Idioma";
+"settings.language.subtitle" = "Idioma de la aplicación";
+"settings.language.english" = "English";
+"settings.language.spanish" = "Español";
+"settings.reset.title" = "Restablecer valores";
+"settings.reset.subtitle" = "Restaura todas las preferencias";
+"settings.reset.button" = "Restablecer…";
+
+/* Gesture showcase */
+"showcase.drag_distance" = "Distancia de arrastre para cambiar";
+"showcase.invert" = "Invertir";
+"showcase.invert.help" = "Invierte la dirección del arrastre";
+"showcase.badge.on" = "On";
+"showcase.badge.off" = "Off";
+"showcase.card.help.enable" = "Toca para activar este gesto";
+"showcase.card.help.disable" = "Toca para desactivar este gesto";
+"showcase.card.help.monitoring_off" = "Activa el monitoreo de gestos para habilitarlo";
+
+/* About */
+"about.version" = "Versión %@";
+"about.build" = "Build %@";
+"about.tagline" = "Gestos de mouse avanzados para macOS. Código abierto, ligero y enfocado en la privacidad.";
+"about.chip.mission_control" = "Mission Control";
+"about.chip.spaces" = "Spaces";
+"about.chip.zoom" = "Zoom";
+"about.link.github" = "GitHub";
+"about.link.report_issue" = "Reportar problema";
+"about.made_by" = "Hecho por Steven Coaila Zaa";
+"about.license" = "Licencia MIT";
+
+/* Permissions onboarding */
+"permissions.window.title" = "BuenMouse — Configuración";
+"permissions.welcome.title" = "Bienvenido a BuenMouse";
+"permissions.welcome.subtitle" = "Un permiso rápido y estás listo.";
+"permissions.status.active" = "Activo";
+"permissions.status.pending" = "Pendiente";
+"permissions.card.title" = "Accesibilidad";
+"permissions.card.description" = "BuenMouse necesita acceso de Accesibilidad para detectar clics y gestos del mouse.";
+"permissions.card.activate" = "Activar";
+"permissions.success.title" = "¡Todo listo!";
+"permissions.success.description" = "El acceso de Accesibilidad está activo. Ya puedes usar BuenMouse.";
+"permissions.footer.ready" = "Listo para usar";
+"permissions.footer.instructions" = "Haz clic en Activar y suelta BuenMouse en la lista.";
+"permissions.footer.continue" = "Continuar";
+"permissions.footer.later" = "Más tarde";
+
+/* Permission drag overlay */
+"overlay.title" = "Arrastra BuenMouse a Accesibilidad";
+"overlay.close" = "Cerrar";
+"overlay.message" = "Toma la tarjeta de abajo y suéltala sobre la lista de Accesibilidad. BuenMouse aparecerá ahí con su interruptor ya encendido.";
+"overlay.footnote" = "O haz clic en \"+\" en Configuración del Sistema y elige BuenMouse manualmente.";
+"overlay.drag_source.subtitle" = "Arrastra a la lista de Accesibilidad";
+
+/* Status item */
+"statusitem.active" = "BuenMouse — Activo";
+"statusitem.paused" = "BuenMouse — En pausa";

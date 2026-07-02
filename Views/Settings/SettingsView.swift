@@ -4,9 +4,17 @@ import SwiftUI
 /// Every persistent option lives here — the menu bar panel stays quick.
 struct SettingsView<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
+    @ObservedObject private var localizationManager = LocalizationManager.shared
 
     @State private var currentSlide: GesturePreviewType = .missionControl
     @State private var showResetConfirmation = false
+
+    private var languageBinding: Binding<String> {
+        Binding(
+            get: { LocalizationManager.shared.language },
+            set: { LocalizationManager.shared.language = $0 }
+        )
+    }
 
     private var isLastSlide: Bool {
         currentSlide == .spaceNavigation
@@ -25,11 +33,11 @@ struct SettingsView<Settings: SettingsProtocol>: View {
         .padding(.bottom, 20)
         .frame(width: 470)
         .background(Color(nsColor: .windowBackgroundColor))
-        .alert("Reset all settings to defaults?", isPresented: $showResetConfirmation) {
-            Button("Reset", role: .destructive) { settings.resetToDefaults() }
-            Button("Cancel", role: .cancel) {}
+        .alert("settings.reset.alert.title".localized, isPresented: $showResetConfirmation) {
+            Button("settings.reset.alert.confirm".localized, role: .destructive) { settings.resetToDefaults() }
+            Button("settings.reset.alert.cancel".localized, role: .cancel) {}
         } message: {
-            Text("This restores every BuenMouse preference. This cannot be undone.")
+            Text("settings.reset.alert.message".localized)
         }
     }
 
@@ -40,7 +48,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("BuenMouse")
                     .font(.system(size: 24, weight: .bold))
-                Text("Mouse gestures for macOS")
+                Text("settings.subtitle".localized)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -54,9 +62,12 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                     Circle()
                         .fill(settings.isMonitoringActive ? Color.green : Color.gray)
                         .frame(width: 7, height: 7)
-                    Text(settings.isMonitoringActive ? "Active" : "Paused")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(settings.isMonitoringActive ? .green : .secondary)
+                    Text(
+                        settings.isMonitoringActive
+                            ? "settings.status.active".localized : "settings.status.paused".localized
+                    )
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(settings.isMonitoringActive ? .green : .secondary)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
@@ -72,7 +83,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                 )
             }
             .buttonStyle(.plain)
-            .help("Click to pause or resume gesture monitoring")
+            .help("settings.status.help".localized)
         }
     }
 
@@ -100,8 +111,8 @@ struct SettingsView<Settings: SettingsProtocol>: View {
         VStack(spacing: 0) {
             settingRow(
                 icon: "power",
-                title: "Launch at Login",
-                subtitle: "Start BuenMouse when you log in"
+                title: "settings.launch_at_login.title".localized,
+                subtitle: "settings.launch_at_login.subtitle".localized
             ) {
                 Toggle("", isOn: $settings.launchAtLogin)
                     .toggleStyle(.switch)
@@ -113,11 +124,28 @@ struct SettingsView<Settings: SettingsProtocol>: View {
             Divider().padding(.horizontal, 14)
 
             settingRow(
-                icon: "arrow.counterclockwise",
-                title: "Reset to Defaults",
-                subtitle: "Restore every preference"
+                icon: "globe",
+                title: "settings.language.title".localized,
+                subtitle: "settings.language.subtitle".localized
             ) {
-                Button("Reset…") { showResetConfirmation = true }
+                Picker("", selection: languageBinding) {
+                    Text("settings.language.english".localized).tag("en")
+                    Text("settings.language.spanish".localized).tag("es")
+                }
+                .pickerStyle(.menu)
+                .controlSize(.small)
+                .labelsHidden()
+                .fixedSize()
+            }
+
+            Divider().padding(.horizontal, 14)
+
+            settingRow(
+                icon: "arrow.counterclockwise",
+                title: "settings.reset.title".localized,
+                subtitle: "settings.reset.subtitle".localized
+            ) {
+                Button("settings.reset.button".localized) { showResetConfirmation = true }
                     .controlSize(.small)
             }
         }

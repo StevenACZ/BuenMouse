@@ -11,6 +11,8 @@ struct PermissionRequirementsView: View {
     let onActivate: () -> Void
     let onClose: () -> Void
 
+    @ObservedObject private var localizationManager = LocalizationManager.shared
+
     @State private var isGranted: Bool = AccessibilityPermission.isGranted
     @State private var grantFlash: Int = 0
     @Environment(\.colorScheme) private var colorScheme
@@ -59,10 +61,10 @@ struct PermissionRequirementsView: View {
                 .shadow(color: accent.opacity(0.35), radius: 5, y: 2)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Welcome to BuenMouse")
+                Text("permissions.welcome.title".localized)
                     .font(.system(size: 17, weight: .bold))
 
-                Text("One quick permission and you're ready to go.")
+                Text("permissions.welcome.subtitle".localized)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -77,8 +79,11 @@ struct PermissionRequirementsView: View {
         HStack(spacing: 5) {
             Image(systemName: isGranted ? "checkmark.circle.fill" : "clock")
                 .font(.system(size: 10, weight: .semibold))
-            Text(isGranted ? "Active" : "Pending")
-                .font(.system(size: 10, weight: .semibold))
+            Text(
+                isGranted
+                    ? "permissions.status.active".localized : "permissions.status.pending".localized
+            )
+            .font(.system(size: 10, weight: .semibold))
         }
         .foregroundStyle(isGranted ? Color.green : accent)
         .padding(.horizontal, 9)
@@ -101,10 +106,10 @@ struct PermissionRequirementsView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Accessibility")
+                Text("permissions.card.title".localized)
                     .font(.system(size: 14, weight: .semibold))
 
-                Text("BuenMouse needs Accessibility access to detect mouse clicks and gestures.")
+                Text("permissions.card.description".localized)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -113,7 +118,7 @@ struct PermissionRequirementsView: View {
             Spacer(minLength: 8)
 
             Button(action: onActivate) {
-                Text("Activate")
+                Text("permissions.card.activate".localized)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
@@ -135,9 +140,9 @@ struct PermissionRequirementsView: View {
                 .foregroundStyle(.green)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("You're all set!")
+                Text("permissions.success.title".localized)
                     .font(.system(size: 14, weight: .semibold))
-                Text("Accessibility access is active. You can start using BuenMouse.")
+                Text("permissions.success.description".localized)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -156,20 +161,24 @@ struct PermissionRequirementsView: View {
             HStack(spacing: 5) {
                 Image(systemName: isGranted ? "checkmark.circle.fill" : "hand.point.up.left.fill")
                     .font(.system(size: 11))
-                Text(isGranted ? "Ready to go" : "Click Activate, then drop BuenMouse on the list.")
-                    .font(.caption)
+                Text(
+                    isGranted
+                        ? "permissions.footer.ready".localized
+                        : "permissions.footer.instructions".localized
+                )
+                .font(.caption)
             }
             .foregroundStyle(isGranted ? Color.green : Color.secondary)
 
             Spacer()
 
             if isGranted {
-                Button("Continue", action: onClose)
+                Button("permissions.footer.continue".localized, action: onClose)
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
                     .tint(.green)
             } else {
-                Button("Later", action: onClose)
+                Button("permissions.footer.later".localized, action: onClose)
                     .keyboardShortcut(.cancelAction)
                     .buttonStyle(.bordered)
             }

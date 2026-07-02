@@ -4,6 +4,8 @@ import SwiftUI
 /// Kept out of the main settings window so the settings stay focused
 /// on the gesture showcase.
 struct AboutView: View {
+    @ObservedObject private var localizationManager = LocalizationManager.shared
+
     private var version: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "3.0.0"
     }
@@ -52,12 +54,12 @@ struct AboutView: View {
                     .font(.system(size: 24, weight: .bold))
 
                 HStack(spacing: 6) {
-                    Text("Version \(version)")
+                    Text("about.version".localized(version))
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
                         .foregroundStyle(.secondary)
                     Text("·")
                         .foregroundStyle(.tertiary)
-                    Text("Build \(build)")
+                    Text("about.build".localized(build))
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
                         .foregroundStyle(.tertiary)
                 }
@@ -66,7 +68,7 @@ struct AboutView: View {
     }
 
     private var taglineSection: some View {
-        Text("Advanced mouse gestures for macOS. Open source, lightweight, and privacy-focused.")
+        Text("about.tagline".localized)
             .font(.callout)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
@@ -76,9 +78,9 @@ struct AboutView: View {
 
     private var featureChipsSection: some View {
         HStack(spacing: 8) {
-            featureChip(icon: "rectangle.3.group", text: "Mission Control")
-            featureChip(icon: "rectangle.split.3x1", text: "Spaces")
-            featureChip(icon: "plus.magnifyingglass", text: "Zoom")
+            featureChip(icon: "rectangle.3.group", text: "about.chip.mission_control".localized)
+            featureChip(icon: "rectangle.split.3x1", text: "about.chip.spaces".localized)
+            featureChip(icon: "plus.magnifyingglass", text: "about.chip.zoom".localized)
         }
     }
 
@@ -92,11 +94,11 @@ struct AboutView: View {
     private var linksSection: some View {
         HStack(spacing: 10) {
             linkButton(
-                label: "GitHub",
+                label: "about.link.github".localized,
                 systemImage: "chevron.left.forwardslash.chevron.right",
                 url: "https://github.com/StevenACZ/BuenMouse")
             linkButton(
-                label: "Report Issue",
+                label: "about.link.report_issue".localized,
                 systemImage: "exclamationmark.bubble",
                 url: "https://github.com/StevenACZ/BuenMouse/issues/new")
         }
@@ -104,14 +106,14 @@ struct AboutView: View {
 
     private var footerSection: some View {
         VStack(spacing: 4) {
-            Text("Made by Steven Coaila Zaa")
+            Text("about.made_by".localized)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 6) {
                 Image(systemName: "doc.text")
                     .font(.system(size: 9))
-                Text("MIT License")
+                Text("about.license".localized)
                 Text("·")
                 Text("© \(copyrightYear)")
             }

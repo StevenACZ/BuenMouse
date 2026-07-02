@@ -35,6 +35,10 @@ real window is created and owned by AppKit controllers. Never reintroduce a
   the drag-to-grant System Settings overlay.
 - `Core/Settings`: persisted settings and protocol surface for views.
 - `Core/SystemActions`: local macOS actions such as Mission Control / Spaces.
+- `Core/Helpers`: `LocalizationManager` (en/es app language, persisted to
+  `appLanguage`, follows the macOS UI language on first launch) and the
+  `String.localized` lookup extension. All user-facing copy lives in
+  `Resources/{en,es}.lproj/Localizable.strings` — never hardcode UI strings.
 - `Core/UI/Theme.swift`: brand accent (cyan) and shared animation constants.
 - `Views/MenuBar`: dropdown panel (header + gesture grid + action rows).
 - `Views/Settings`: consolidated settings window (showcase + general options).

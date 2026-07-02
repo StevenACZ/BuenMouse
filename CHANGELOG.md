@@ -6,6 +6,14 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-07-01
+
+### Added
+
+- In-app language switcher (English / Español) in Settings. New installs follow
+  the macOS UI language; the choice persists and the whole UI — menu bar panel,
+  settings, About, and permission onboarding — updates live.
+
 ## [3.0.0] - 2026-07-01
 
 ### Added

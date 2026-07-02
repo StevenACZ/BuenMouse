@@ -30,7 +30,7 @@ final class PermissionOverlayContentView: NSView {
         arrowView.contentTintColor = accentColor
         cardView.addSubview(arrowView)
 
-        let titleLabel = NSTextField(labelWithString: "Drag BuenMouse into Accessibility")
+        let titleLabel = NSTextField(labelWithString: "overlay.title".localized)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
         titleLabel.textColor = .labelColor
@@ -39,13 +39,14 @@ final class PermissionOverlayContentView: NSView {
         let closeButton = NSButton()
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         closeButton.isBordered = false
-        closeButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Close")
+        closeButton.image = NSImage(
+            systemSymbolName: "xmark.circle.fill", accessibilityDescription: "overlay.close".localized)
         closeButton.contentTintColor = .secondaryLabelColor
         closeButton.target = self
         closeButton.action = #selector(closePressed)
         cardView.addSubview(closeButton)
 
-        let messageLabel = NSTextField(wrappingLabelWithString: "Pick up the card below and drop it onto the Accessibility list. BuenMouse will appear there with its toggle already on.")
+        let messageLabel = NSTextField(wrappingLabelWithString: "overlay.message".localized)
         messageLabel.translatesAutoresizingMaskIntoConstraints = false
         messageLabel.font = .systemFont(ofSize: 12.5, weight: .medium)
         messageLabel.textColor = .secondaryLabelColor
@@ -54,7 +55,7 @@ final class PermissionOverlayContentView: NSView {
         let dragView = PermissionAppDragSourceView(hostApp: hostApp, accentColor: accentColor)
         cardView.addSubview(dragView)
 
-        let footnoteLabel = NSTextField(wrappingLabelWithString: "Or click \"+\" in System Settings and pick BuenMouse manually.")
+        let footnoteLabel = NSTextField(wrappingLabelWithString: "overlay.footnote".localized)
         footnoteLabel.translatesAutoresizingMaskIntoConstraints = false
         footnoteLabel.font = .systemFont(ofSize: 11, weight: .medium)
         footnoteLabel.textColor = .tertiaryLabelColor

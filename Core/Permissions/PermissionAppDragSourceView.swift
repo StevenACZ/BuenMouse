@@ -10,7 +10,7 @@ final class PermissionAppDragSourceView: NSView, NSPasteboardItemDataProvider, N
     private let rowView = NSView()
     private let iconChrome = NSView()
     private let titleLabel: NSTextField
-    private let subtitleLabel = NSTextField(labelWithString: "Drag onto the Accessibility list")
+    private let subtitleLabel = NSTextField(labelWithString: "overlay.drag_source.subtitle".localized)
 
     init(hostApp: PermissionHostApp, accentColor: NSColor) {
         self.hostApp = hostApp

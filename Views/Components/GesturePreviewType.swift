@@ -10,29 +10,29 @@ enum GesturePreviewType: CaseIterable, Hashable {
 
     var title: String {
         switch self {
-        case .missionControl: return "Middle Click → Mission Control"
-        case .spaceNavigation: return "Middle Drag → Switch Spaces"
-        case .scrollZoom: return "⌃ + Scroll → Zoom In / Out"
-        case .invertScroll: return "Invert Scroll → Natural Direction"
+        case .missionControl: return "gesture.mission_control.title".localized
+        case .spaceNavigation: return "gesture.space_navigation.title".localized
+        case .scrollZoom: return "gesture.scroll_zoom.title".localized
+        case .invertScroll: return "gesture.invert_scroll.title".localized
         }
     }
 
     var subtitle: String {
         switch self {
-        case .missionControl: return "Press the scroll wheel to open Mission Control"
-        case .spaceNavigation: return "Hold the scroll wheel and drag horizontally"
-        case .scrollZoom: return "Hold Control and use the scroll wheel"
-        case .invertScroll: return "Reverse the mouse wheel scroll direction"
+        case .missionControl: return "gesture.mission_control.subtitle".localized
+        case .spaceNavigation: return "gesture.space_navigation.subtitle".localized
+        case .scrollZoom: return "gesture.scroll_zoom.subtitle".localized
+        case .invertScroll: return "gesture.invert_scroll.subtitle".localized
         }
     }
 
     /// Compact name for the panel grid tiles.
     var shortTitle: String {
         switch self {
-        case .missionControl: return "Mission Control"
-        case .spaceNavigation: return "Switch Spaces"
-        case .scrollZoom: return "Scroll Zoom"
-        case .invertScroll: return "Invert Scroll"
+        case .missionControl: return "gesture.mission_control.short".localized
+        case .spaceNavigation: return "gesture.space_navigation.short".localized
+        case .scrollZoom: return "gesture.scroll_zoom.short".localized
+        case .invertScroll: return "gesture.invert_scroll.short".localized
         }
     }
 
