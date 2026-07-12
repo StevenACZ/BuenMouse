@@ -6,6 +6,18 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-07-11
+
+### Added
+
+- One-click in-app updates via Sparkle 2. A quiet daily check against GitHub
+  Releases surfaces new versions as a row in the menu bar panel and a capsule
+  in the About window; one click downloads, installs, and relaunches the app.
+  Updates are EdDSA-signed and verified against the public key embedded in
+  the app. The automatic check can be disabled in Settings, and the About
+  window offers a manual "Check for updates". Scheduled check failures stay
+  silent; nothing is ever sent to any server.
+
 ## [3.1.0] - 2026-07-01
 
 ### Added

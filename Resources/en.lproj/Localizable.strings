@@ -95,3 +95,21 @@
 /* Status item */
 "statusitem.active" = "BuenMouse — Active";
 "statusitem.paused" = "BuenMouse — Paused";
+
+/* In-app updates (Sparkle) */
+"menubar.update.available" = "Update available";
+"menubar.update.install_hint" = "v%@ — click to install";
+"menubar.update.downloading" = "Downloading update…";
+"menubar.update.installing" = "Installing update…";
+"menubar.update.relaunch" = "BuenMouse will relaunch by itself";
+"menubar.update.failed" = "Update failed";
+"menubar.update.retry_hint" = "Click to try again";
+"about.update.install" = "Install v%@";
+"about.update.downloading" = "Downloading…";
+"about.update.installing" = "Installing…";
+"about.update.retry" = "Update failed — try again";
+"about.update.release_notes" = "View release notes";
+"about.update.check" = "Check for updates";
+"about.update.up_to_date" = "You're up to date";
+"settings.updates.title" = "Check for updates automatically";
+"settings.updates.subtitle" = "Checks GitHub Releases once a day. Nothing is sent.";

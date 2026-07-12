@@ -95,3 +95,21 @@
 /* Status item */
 "statusitem.active" = "BuenMouse — Activo";
 "statusitem.paused" = "BuenMouse — En pausa";
+
+/* In-app updates (Sparkle) */
+"menubar.update.available" = "Actualización disponible";
+"menubar.update.install_hint" = "v%@ — clic para instalar";
+"menubar.update.downloading" = "Descargando actualización…";
+"menubar.update.installing" = "Instalando actualización…";
+"menubar.update.relaunch" = "BuenMouse se relanzará solo";
+"menubar.update.failed" = "La actualización falló";
+"menubar.update.retry_hint" = "Clic para reintentar";
+"about.update.install" = "Instalar v%@";
+"about.update.downloading" = "Descargando…";
+"about.update.installing" = "Instalando…";
+"about.update.retry" = "Falló la actualización — reintentar";
+"about.update.release_notes" = "Ver notas de la versión";
+"about.update.check" = "Buscar actualizaciones";
+"about.update.up_to_date" = "Estás al día";
+"settings.updates.title" = "Buscar actualizaciones automáticamente";
+"settings.updates.subtitle" = "Consulta GitHub Releases una vez al día. No se envía nada.";

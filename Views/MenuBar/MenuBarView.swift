@@ -29,6 +29,7 @@ struct MenuBarPanelHost: View {
 struct MenuBarView<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
     @ObservedObject private var localizationManager = LocalizationManager.shared
+    @ObservedObject private var updateManager = UpdateManager.shared
     let isPermissionGranted: Bool
     let openSettings: () -> Void
     let openAbout: () -> Void
@@ -54,6 +55,12 @@ struct MenuBarView<Settings: SettingsProtocol>: View {
 
             Divider()
                 .padding(.horizontal, 12)
+
+            if updateManager.phase != .idle {
+                UpdateMenuRow(manager: updateManager)
+
+                Divider().padding(.horizontal, 16)
+            }
 
             ActionRow(
                 icon: "gearshape",
