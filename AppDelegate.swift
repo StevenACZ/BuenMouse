@@ -19,6 +19,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupComponents()
         setupMenuBar()
         configureLaunchAtLoginDefault()
+        UpdateManager.shared.start()
 
         settingsManager.onMonitoringChanged = { [weak self] in
             self?.applyMonitoringState()

@@ -48,6 +48,11 @@ Cada gesto se puede activar o desactivar independientemente desde la ventana pri
 3. Abre BuenMouse desde Aplicaciones
 4. macOS te pedirá permisos de **Accesibilidad** — actívalos para que los gestos funcionen
 
+Después de la primera instalación no necesitas volver a descargar nada: BuenMouse
+revisa GitHub Releases una vez al día y, cuando hay una versión nueva, aparece una
+fila en el panel de la barra de menú — un clic la descarga, instala y relanza la
+app (actualizaciones firmadas con EdDSA vía Sparkle). Se puede desactivar en Ajustes.
+
 ### Otorgar permisos de Accesibilidad
 
 BuenMouse necesita permisos de accesibilidad para detectar los clicks y scrolls del mouse. La primera vez que la abras:
@@ -80,6 +85,8 @@ La apariencia sigue automáticamente el tema del sistema (claro / oscuro).
 - 💻 **Todo es local** — los gestos se procesan en tu Mac
 - 🔓 **Código abierto** — puedes auditar exactamente qué hace
 - 🔐 **Permisos mínimos** — solo Accesibilidad y Apple Events (para abrir Mission Control)
+- 🔄 **Única conexión de red**: la búsqueda de actualizaciones (una vez al día, opcional)
+  descarga el `appcast.xml` firmado desde GitHub Releases; no envía ningún dato
 
 ---
 

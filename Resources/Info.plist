@@ -8,5 +8,13 @@
     <string>BuenMouse necesita permiso para controlar otras aplicaciones del sistema, como System Events y Mission Control.</string>
     <key>LSUIElement</key>
     <true/>
+    <!-- Sparkle in-app updates: public feed + EdDSA public key (private key
+         lives in the maintainer's Keychain; never in the repo). -->
+    <key>SUFeedURL</key>
+    <string>https://github.com/StevenACZ/BuenMouse/releases/latest/download/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>EjJwYzuWlNuccLSqIcVxHRlGMLg7R6ONwpUjnVbFqY8=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
 </dict>
 </plist>

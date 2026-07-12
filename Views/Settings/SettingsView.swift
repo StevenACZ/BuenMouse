@@ -5,6 +5,7 @@ import SwiftUI
 struct SettingsView<Settings: SettingsProtocol>: View {
     @ObservedObject var settings: Settings
     @ObservedObject private var localizationManager = LocalizationManager.shared
+    @ObservedObject private var updateManager = UpdateManager.shared
 
     @State private var currentSlide: GesturePreviewType = .missionControl
     @State private var showResetConfirmation = false
@@ -136,6 +137,26 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                 .controlSize(.small)
                 .labelsHidden()
                 .fixedSize()
+            }
+
+            Divider().padding(.horizontal, 14)
+
+            settingRow(
+                icon: "arrow.down.circle",
+                title: "settings.updates.title".localized,
+                subtitle: "settings.updates.subtitle".localized
+            ) {
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { updateManager.autoCheckEnabled },
+                        set: { updateManager.setAutoCheckEnabled($0) }
+                    )
+                )
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
+                .tint(Theme.accent)
             }
 
             Divider().padding(.horizontal, 14)

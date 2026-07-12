@@ -16,6 +16,14 @@ gesture handling. Do not
 add cloud relay, telemetry endpoints, or credential storage without an explicit
 design and security review.
 
+## Update Channel
+
+In-app updates are served from GitHub Releases through a Sparkle appcast
+(`appcast.xml` uploaded with each release). Updates install only if their
+EdDSA signature matches the public key embedded in the app's Info.plist, so
+only the maintainer holding the private key (stored in the maintainer's
+Keychain, never in the repo) can publish an installable update.
+
 ## Reporting
 
 For security-sensitive issues, do not include private logs or local identifiers
