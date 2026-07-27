@@ -53,8 +53,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Permission can be granted or revoked while the app is idle, so every
-    /// activation reconciles the tap with the current trust status.
     func applicationDidBecomeActive(_ notification: Notification) {
         applyMonitoringState()
     }

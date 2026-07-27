@@ -23,9 +23,7 @@ final class EventMonitor {
 
     /// `mouseMoved` is intentionally NOT tapped: middle-button drags arrive as
     /// `otherMouseDragged`, so plain cursor movement never wakes the process.
-    /// Left-button events are not tapped either — no gesture uses them, and
-    /// routing every click and drag of the session through this process buys
-    /// nothing but latency and `tapDisabledByTimeout` risk.
+    /// Left-button events are not tapped either: no gesture uses them.
     private static let eventMask: CGEventMask =
         (1 << CGEventType.otherMouseDown.rawValue)
         | (1 << CGEventType.otherMouseUp.rawValue)
