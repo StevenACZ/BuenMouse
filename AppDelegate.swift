@@ -112,6 +112,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func applyMonitoringState() {
         if settingsManager.isMonitoringActive && AccessibilityPermission.isGranted {
             eventMonitor?.startMonitoring()
+            eventMonitor?.reassertTap()
         } else {
             eventMonitor?.stopMonitoring()
         }

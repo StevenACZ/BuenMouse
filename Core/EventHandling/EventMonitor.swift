@@ -80,13 +80,13 @@ final class EventMonitor {
         os_log("EventMonitor stopped", log: .default, type: .info)
     }
 
-    /// Cheap safety net after sleep/wake: if the tap exists but macOS left it
-    /// disabled, turn it back on.
+    /// Cheap safety net: if the tap exists but macOS left it disabled, turn it
+    /// back on.
     func reassertTap() {
         guard let tap = eventTap, !CGEvent.tapIsEnabled(tap: tap) else { return }
         CGEvent.tapEnable(tap: tap, enable: true)
         gestureHandler.resetState()
-        os_log("Event tap re-enabled after wake", log: .default, type: .info)
+        os_log("Event tap re-enabled", log: .default, type: .info)
     }
 
     private func cleanup() {
