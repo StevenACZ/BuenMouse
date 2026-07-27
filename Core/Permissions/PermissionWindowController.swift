@@ -4,10 +4,8 @@ import SwiftUI
 /// Owns the lifetime of the permission onboarding window. Notifies the app
 /// delegate when the user grants Accessibility so monitoring can start.
 final class PermissionWindowController: NSWindowController, NSWindowDelegate {
-    /// Fires once the permission flips from denied → granted while the window
-    /// is open. The window closes shortly after, so a window opened with the
-    /// permission already granted must never fire it — the user asked to see
-    /// the screen, not to watch it close.
+    /// Fires once the permission flips from denied → granted. The window
+    /// closes shortly after; the delegate decides what to do next.
     var onPermissionGranted: (() -> Void)?
 
     private var hostingController: NSHostingController<PermissionRequirementsView>?
@@ -127,11 +125,8 @@ final class PermissionWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func checkForTransition() {
-        guard AccessibilityPermission.isGranted, !hasNotified else { return }
-        notifyPermissionGranted()
-    }
-
-    private func notifyPermissionGranted() {
+        let granted = AccessibilityPermission.isGranted
+        guard granted, !hasNotified else { return }
         hasNotified = true
         PermissionAssistant.shared.dismiss()
         onPermissionGranted?()

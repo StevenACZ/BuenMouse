@@ -17,8 +17,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Granting the permission without relaunching, or reopening onboarding with the
   permission already granted, left the event tap uncreated while the panel
   still reported gestures as on; revoking it left a stale menu bar icon. The
-  app now reconciles on activation and on the system's accessibility change
-  notification.
+  app now reconciles when it becomes active, when the system posts its
+  accessibility change notification, and when the onboarding window opens.
 
 ## [3.2.0] - 2026-07-11
 

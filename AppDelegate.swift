@@ -132,6 +132,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Permission Onboarding
 
     private func showPermissionOnboarding() {
+        applyMonitoringState()
+
         if permissionWindowController == nil {
             let controller = PermissionWindowController()
             controller.onPermissionGranted = { [weak self] in
