@@ -12,6 +12,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBarController: MenuBarStatusController?
     private var permissionWindowController: PermissionWindowController?
     private var wakeObserver: NSObjectProtocol?
+    private var accessibilityObserver: NSObjectProtocol?
+
+    /// Posted by macOS whenever the Accessibility trust database changes.
+    private static let accessibilityChanged = Notification.Name("com.apple.accessibility.api")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -39,12 +43,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.eventMonitor?.reassertTap()
             }
         }
+
+        accessibilityObserver = DistributedNotificationCenter.default().addObserver(
+            forName: Self.accessibilityChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.handleAccessibilityChange()
+            }
+        }
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        applyMonitoringState()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         eventMonitor?.stopMonitoring()
         if let observer = wakeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
+        if let observer = accessibilityObserver {
+            DistributedNotificationCenter.default().removeObserver(observer)
         }
     }
 
@@ -62,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupComponents() {
         let scroll = ScrollHandler(settingsManager: settingsManager)
-        let gesture = GestureHandler(settingsManager: settingsManager, scrollHandler: scroll)
+        let gesture = GestureHandler(settingsManager: settingsManager)
         scrollHandler = scroll
         gestureHandler = gesture
         eventMonitor = EventMonitor(gestureHandler: gesture, scrollHandler: scroll)
@@ -91,15 +110,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func applyMonitoringState() {
         if settingsManager.isMonitoringActive && AccessibilityPermission.isGranted {
             eventMonitor?.startMonitoring()
+            eventMonitor?.reassertTap()
         } else {
             eventMonitor?.stopMonitoring()
         }
         menuBarController?.refreshStatusIcon()
     }
 
+    /// The notification lands before `AXIsProcessTrusted()` reports the new
+    /// value, so reconcile again while the change propagates.
+    private func handleAccessibilityChange() {
+        applyMonitoringState()
+        for delay in [0.5, 1.5] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.applyMonitoringState()
+            }
+        }
+    }
+
     // MARK: - Permission Onboarding
 
     private func showPermissionOnboarding() {
+        applyMonitoringState()
+
         if permissionWindowController == nil {
             let controller = PermissionWindowController()
             controller.onPermissionGranted = { [weak self] in

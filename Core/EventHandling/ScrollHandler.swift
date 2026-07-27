@@ -1,5 +1,5 @@
-import Cocoa
 import ApplicationServices
+import Cocoa
 
 enum EventResult {
     case consumed
@@ -8,31 +8,20 @@ enum EventResult {
 
 final class ScrollHandler: NSObject {
     private weak var settingsManager: SettingsManager?
-    
+
     private var scrollAccumulator: Double = 0.0
-    private var isControlClickScrolling = false
-    private var lastControlClickTime: TimeInterval = 0
-    
+
     init(settingsManager: SettingsManager) {
         self.settingsManager = settingsManager
         super.init()
     }
-    
-    func setControlClickScrolling(_ value: Bool) {
-        isControlClickScrolling = value
-    }
-    
-    func setLastControlClickTime(_ time: TimeInterval) {
-        lastControlClickTime = time
-    }
-    
+
     func handleEvent(type: CGEventType, event: CGEvent) -> EventResult {
         guard type == .scrollWheel else { return .passed }
-        
+
         let flags = event.flags
         let isControlPressed = flags.contains(.maskControl)
-        let now = CFAbsoluteTimeGetCurrent()
-        
+
         // Handle scroll inversion
         let scrollPhase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
         let momentumPhase = event.getIntegerValueField(.scrollWheelEventMomentumPhase)
@@ -46,8 +35,7 @@ final class ScrollHandler: NSObject {
         }
 
         // Handle scroll zoom
-        let timeSinceControlClick = now - lastControlClickTime
-        if settingsManager?.enableScrollZoom == true && isControlPressed && !isControlClickScrolling && timeSinceControlClick > 0.2 {
+        if settingsManager?.enableScrollZoom == true && isControlPressed {
             let deltaY = event.getDoubleValueField(.scrollWheelEventDeltaAxis1)
             scrollAccumulator += deltaY
 
@@ -61,7 +49,7 @@ final class ScrollHandler: NSObject {
                 return .consumed
             }
         }
-        
+
         return .passed
     }
-} 
+}

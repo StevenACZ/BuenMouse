@@ -2,7 +2,7 @@
 
 Public-safe operating notes for coding agents. Keep private machine-specific
 workflows, signing material, logs, crash reports, release artifacts, and local
-planning in ignored local files. Speak Spanish with Steven; write code,
+planning in ignored local files. Speak Spanish with the maintainer; write code,
 commits, changelogs, and durable technical docs in English.
 
 ## Product
@@ -88,8 +88,8 @@ xcodebuild -project BuenMouse.xcodeproj -scheme BuenMouse \
 
 ## Local Testing
 
-Use `make install-dev` for routine local app testing on Steven's Mac after he
-has approved installation/relaunch for the task. It builds a signed Release app,
+Use `make install-dev` for routine local app testing on the maintainer's Mac after
+they have approved installation/relaunch for the task. It builds a signed Release app,
 reinstalls to `/Applications/BuenMouse.app`, and relaunches it. Keeping the same
 app name, bundle id, and Apple Development signing identity preserves the
 Accessibility grant across rebuilds.
@@ -116,7 +116,7 @@ Crash reports land under `~/Library/Logs/DiagnosticReports/BuenMouse-*.ips`.
 
 - Build and validate the Release app before packaging.
 - DMGs are release-only; do not create one for routine local verification.
-- Use `make notarized-dmg` only when Steven approves release packaging.
+- Use `make notarized-dmg` only when the maintainer approves release packaging.
 - Do not create GitHub releases, tags, or release notes without explicit
   approval.
 
