@@ -6,6 +6,20 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Control + left click works again as the macOS secondary click. An
+  undocumented Control + left-drag scroll gesture consumed every left mouse
+  down at the session tap, which suppressed the system's secondary click in
+  every application, not just in BuenMouse. The gesture has been removed;
+  Control + scroll zoom and the middle-button gestures are unchanged.
+- Gestures now recover on their own when the Accessibility grant changes.
+  Granting the permission without relaunching, or reopening onboarding with the
+  permission already granted, left the event tap uncreated while the panel
+  still reported gestures as on; revoking it left a stale menu bar icon. The
+  app now reconciles on activation and on the system's accessibility change
+  notification.
+
 ## [3.2.0] - 2026-07-11
 
 ### Added
