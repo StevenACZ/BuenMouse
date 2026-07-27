@@ -83,7 +83,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupComponents() {
         let scroll = ScrollHandler(settingsManager: settingsManager)
-        let gesture = GestureHandler(settingsManager: settingsManager, scrollHandler: scroll)
+        let gesture = GestureHandler(settingsManager: settingsManager)
         scrollHandler = scroll
         gestureHandler = gesture
         eventMonitor = EventMonitor(gestureHandler: gesture, scrollHandler: scroll)

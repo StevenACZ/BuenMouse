@@ -1,11 +1,11 @@
 import ApplicationServices
 import Cocoa
 
-/// Translates raw mouse events into BuenMouse gestures:
+/// Translates middle-button mouse events into BuenMouse gestures:
 /// middle click → Mission Control and middle drag → switch Spaces.
 ///
-/// Left-button events are never consumed: Ctrl + left click is the system
-/// secondary click, so claiming it here would suppress contextual menus
+/// Nothing here reacts to the left button: Ctrl + left click is the system
+/// secondary click, so claiming it would suppress contextual menus
 /// session-wide.
 final class GestureHandler {
     private weak var settingsManager: SettingsManager?
@@ -17,7 +17,7 @@ final class GestureHandler {
 
     private var currentState: GestureState = .idle
 
-    init(settingsManager: SettingsManager, scrollHandler _: ScrollHandler) {
+    init(settingsManager: SettingsManager) {
         self.settingsManager = settingsManager
     }
 
@@ -29,9 +29,8 @@ final class GestureHandler {
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
         let mouseLocation = event.location
 
-        // Handle mouse up events
-        if type == .leftMouseUp || type == .otherMouseUp {
-            if case .tracking(let startLocation) = currentState, type == .otherMouseUp, buttonNumber == 2 {
+        if type == .otherMouseUp {
+            if case .tracking(let startLocation) = currentState, buttonNumber == 2 {
                 let dx = abs(mouseLocation.x - startLocation.x)
                 let dy = abs(mouseLocation.y - startLocation.y)
                 if hypot(dx, dy) < 5, settingsManager?.enableMissionControl == true {
