@@ -328,6 +328,66 @@ final class UpdateManagerTests: XCTestCase {
         XCTAssertTrue(manager.canPostpone)
     }
 
+    func testRetryOnADownloadedStageStopsAtTheReadyCard() {
+        let spy = UpdaterSessionSpy()
+        manager.updaterSession = spy.session
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.beginRequestedInstall()
+        manager.handleError("download failed")
+
+        manager.installNow()
+
+        let choice = manager.handleUpdateFound(
+            version: "9.9.9", stage: .downloaded, releasePage: nil, informationOnly: false)
+
+        XCTAssertEqual(choice, .dismiss)
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
+        XCTAssertFalse(manager.canPostpone)
+    }
+
+    func testRetryOnAnInstallingStageStopsAtTheReadyCard() {
+        let spy = UpdaterSessionSpy()
+        manager.updaterSession = spy.session
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.beginRequestedInstall()
+        manager.handleError("install failed")
+
+        manager.installNow()
+
+        let choice = manager.handleUpdateFound(
+            version: "9.9.9", stage: .installing, releasePage: nil, informationOnly: false)
+
+        XCTAssertEqual(choice, .dismiss)
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
+        XCTAssertFalse(manager.canPostpone)
+    }
+
+    func testRetryThenInstallNowStillInstalls() {
+        let spy = UpdaterSessionSpy()
+        manager.updaterSession = spy.session
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.beginRequestedInstall()
+        manager.handleError("download failed")
+        manager.installNow()
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .downloaded, releasePage: nil, informationOnly: false)
+
+        manager.installNow()
+
+        let choice = manager.handleUpdateFound(
+            version: "9.9.9", stage: .downloaded, releasePage: nil, informationOnly: false)
+
+        XCTAssertEqual(choice, .install)
+        XCTAssertEqual(manager.phase, .installing)
+
+        var choices: [SPUUserUpdateChoice] = []
+        manager.handleReadyToInstall { choices.append($0) }
+        XCTAssertEqual(choices, [.install])
+    }
+
     func testDismissOfTheOldSessionKeepsTheArmedResume() {
         let spy = UpdaterSessionSpy()
         spy.isInProgress = true

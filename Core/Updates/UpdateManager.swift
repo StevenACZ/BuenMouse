@@ -63,6 +63,7 @@ final class UpdateManager: ObservableObject {
 
     private var installRequested = false
     private var installNowRequested = false
+    private var retryRequested = false
     private var pendingInstallReply: ((SPUUserUpdateChoice) -> Void)?
     private var pendingIsInformationOnly = false
     private var expectedDownloadBytes: UInt64 = 0
@@ -148,13 +149,14 @@ final class UpdateManager: ObservableObject {
             self.pendingInstallReply = nil
             canPostpone = false
             installRequested = true
+            retryRequested = false
             phase = .installing
             pendingInstallReply(.install)
             return
         }
         guard updaterSession != nil else { return }
         if case .failed = phase {
-            beginRequestedResume(autoInstall: false)
+            beginRequestedResume(autoInstall: false, retry: true)
             return
         }
         beginRequestedResume()
@@ -165,12 +167,14 @@ final class UpdateManager: ObservableObject {
         self.pendingInstallReply = nil
         canPostpone = false
         installRequested = false
+        retryRequested = false
         pendingInstallReply(.dismiss)
     }
 
-    func beginRequestedResume(autoInstall: Bool = true) {
+    func beginRequestedResume(autoInstall: Bool = true, retry: Bool = false) {
         installRequested = true
         installNowRequested = autoInstall
+        retryRequested = retry
         resumeCheckPending = true
         phase = autoInstall ? .installing : .downloading(fraction: nil)
         resumeRequestCount += 1
@@ -204,6 +208,7 @@ final class UpdateManager: ObservableObject {
         guard resumeCheckPending else { return }
         installRequested = false
         installNowRequested = false
+        retryRequested = false
         resumeCheckPending = false
         phase = .failed(version: pendingVersion ?? "")
     }
@@ -237,12 +242,13 @@ final class UpdateManager: ObservableObject {
         finishManualCheck(status: .idle)
 
         guard stage == .notDownloaded else {
-            if (installRequested || installNowRequested) && !informationOnly {
+            if (installRequested || installNowRequested) && !informationOnly && !retryRequested {
                 phase = .installing
                 return .install
             }
             installRequested = false
             installNowRequested = false
+            retryRequested = false
             phase = .readyToInstall(version: version)
             return .dismiss
         }
@@ -286,6 +292,7 @@ final class UpdateManager: ObservableObject {
             reply(.install)
             return
         }
+        retryRequested = false
         pendingInstallReply = reply
         canPostpone = true
         phase = .readyToInstall(version: pendingVersion ?? "")
@@ -303,6 +310,7 @@ final class UpdateManager: ObservableObject {
         }
         installRequested = false
         installNowRequested = false
+        retryRequested = false
         pendingInstallReply = nil
         canPostpone = false
         pendingVersion = nil
@@ -322,6 +330,7 @@ final class UpdateManager: ObservableObject {
         }
         finishManualCheck(status: .idle)
         installNowRequested = false
+        retryRequested = false
         pendingInstallReply = nil
         canPostpone = false
         if installRequested, let pendingVersion {
@@ -359,6 +368,7 @@ final class UpdateManager: ObservableObject {
         }
         installRequested = false
         installNowRequested = false
+        retryRequested = false
         pendingInstallReply = nil
         canPostpone = false
     }
