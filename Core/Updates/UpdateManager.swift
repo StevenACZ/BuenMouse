@@ -5,10 +5,11 @@ import Sparkle
 import os
 
 /// In-app updates via Sparkle. The scheduled daily check only surfaces a
-/// pending update (update card + About capsule); downloading happens when the
-/// user clicks Update, and installing + relaunching when the user then clicks
-/// Install now, with progress mirrored in `phase`. Scheduled-check failures
-/// stay silent; only a user-requested install surfaces errors.
+/// pending update (update card + About capsule); Update and Retry download or
+/// re-arm it and always stop at "Ready to install". Installing + relaunching
+/// happens only after an explicit Install now click, with progress mirrored in
+/// `phase`. Scheduled-check failures stay silent; only a user-requested
+/// install surfaces errors.
 @MainActor
 final class UpdateManager: ObservableObject {
 
@@ -63,7 +64,6 @@ final class UpdateManager: ObservableObject {
 
     private var installRequested = false
     private var installNowRequested = false
-    private var retryRequested = false
     private var pendingInstallReply: ((SPUUserUpdateChoice) -> Void)?
     private var pendingIsInformationOnly = false
     private var expectedDownloadBytes: UInt64 = 0
@@ -149,14 +149,13 @@ final class UpdateManager: ObservableObject {
             self.pendingInstallReply = nil
             canPostpone = false
             installRequested = true
-            retryRequested = false
             phase = .installing
             pendingInstallReply(.install)
             return
         }
         guard updaterSession != nil else { return }
         if case .failed = phase {
-            beginRequestedResume(autoInstall: false, retry: true)
+            beginRequestedResume(autoInstall: false)
             return
         }
         beginRequestedResume()
@@ -167,14 +166,12 @@ final class UpdateManager: ObservableObject {
         self.pendingInstallReply = nil
         canPostpone = false
         installRequested = false
-        retryRequested = false
         pendingInstallReply(.dismiss)
     }
 
-    func beginRequestedResume(autoInstall: Bool = true, retry: Bool = false) {
+    func beginRequestedResume(autoInstall: Bool = true) {
         installRequested = true
         installNowRequested = autoInstall
-        retryRequested = retry
         resumeCheckPending = true
         phase = autoInstall ? .installing : .downloading(fraction: nil)
         resumeRequestCount += 1
@@ -208,7 +205,6 @@ final class UpdateManager: ObservableObject {
         guard resumeCheckPending else { return }
         installRequested = false
         installNowRequested = false
-        retryRequested = false
         resumeCheckPending = false
         phase = .failed(version: pendingVersion ?? "")
     }
@@ -242,13 +238,12 @@ final class UpdateManager: ObservableObject {
         finishManualCheck(status: .idle)
 
         guard stage == .notDownloaded else {
-            if (installRequested || installNowRequested) && !informationOnly && !retryRequested {
+            if installNowRequested && !informationOnly {
                 phase = .installing
                 return .install
             }
             installRequested = false
             installNowRequested = false
-            retryRequested = false
             phase = .readyToInstall(version: version)
             return .dismiss
         }
@@ -286,13 +281,13 @@ final class UpdateManager: ObservableObject {
 
     func handleReadyToInstall(reply: @escaping (SPUUserUpdateChoice) -> Void) {
         resumeCheckPending = false
+        resumeCheckTask?.cancel()
         if installNowRequested {
             installNowRequested = false
             phase = .installing
             reply(.install)
             return
         }
-        retryRequested = false
         pendingInstallReply = reply
         canPostpone = true
         phase = .readyToInstall(version: pendingVersion ?? "")
@@ -310,7 +305,6 @@ final class UpdateManager: ObservableObject {
         }
         installRequested = false
         installNowRequested = false
-        retryRequested = false
         pendingInstallReply = nil
         canPostpone = false
         pendingVersion = nil
@@ -330,7 +324,6 @@ final class UpdateManager: ObservableObject {
         }
         finishManualCheck(status: .idle)
         installNowRequested = false
-        retryRequested = false
         pendingInstallReply = nil
         canPostpone = false
         if installRequested, let pendingVersion {
@@ -368,7 +361,6 @@ final class UpdateManager: ObservableObject {
         }
         installRequested = false
         installNowRequested = false
-        retryRequested = false
         pendingInstallReply = nil
         canPostpone = false
     }

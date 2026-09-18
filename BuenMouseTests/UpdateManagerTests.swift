@@ -229,6 +229,35 @@ final class UpdateManagerTests: XCTestCase {
         XCTAssertFalse(manager.canPostpone)
     }
 
+    func testUpdateClickOnAPreparedStageStopsAtTheReadyCard() {
+        let spy = UpdaterSessionSpy()
+        manager.updaterSession = spy.session
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.installPendingUpdate()
+
+        let choice = manager.handleUpdateFound(
+            version: "9.9.9", stage: .downloaded, releasePage: nil, informationOnly: false)
+
+        XCTAssertEqual(choice, .dismiss)
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
+        XCTAssertFalse(manager.canPostpone)
+    }
+
+    func testUpdateClickOnAnInstallingStageStopsAtTheReadyCard() {
+        let spy = UpdaterSessionSpy()
+        manager.updaterSession = spy.session
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.installPendingUpdate()
+
+        let choice = manager.handleUpdateFound(
+            version: "9.9.9", stage: .installing, releasePage: nil, informationOnly: false)
+
+        XCTAssertEqual(choice, .dismiss)
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
+    }
+
     func testInstallNowWithoutAnUpdaterLeavesTheCardUntouched() {
         _ = manager.handleUpdateFound(
             version: "9.9.9", stage: .installing, releasePage: nil, informationOnly: false)
@@ -266,6 +295,24 @@ final class UpdateManagerTests: XCTestCase {
         XCTAssertTrue(choices.isEmpty)
         XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
         XCTAssertTrue(manager.canPostpone)
+    }
+
+    func testUpdateDuringTeardownOnAPreparedStageStopsAtTheReadyCard() {
+        let spy = UpdaterSessionSpy()
+        spy.isInProgress = true
+        manager.updaterSession = spy.session
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .installing, releasePage: nil, informationOnly: false)
+
+        manager.installPendingUpdate()
+        XCTAssertEqual(manager.phase, .downloading(fraction: nil))
+
+        let choice = manager.handleUpdateFound(
+            version: "9.9.9", stage: .installing, releasePage: nil, informationOnly: false)
+
+        XCTAssertEqual(choice, .dismiss)
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
+        XCTAssertFalse(manager.resumeCheckPending)
     }
 
     func testResumePollingStartsTheCheckOnceTheSessionIsFree() async {
@@ -372,20 +419,28 @@ final class UpdateManagerTests: XCTestCase {
         manager.beginRequestedInstall()
         manager.handleError("download failed")
         manager.installNow()
-        _ = manager.handleUpdateFound(
-            version: "9.9.9", stage: .downloaded, releasePage: nil, informationOnly: false)
+        var replies: [SPUUserUpdateChoice] = []
+        var choices: [SPUUserUpdateChoice] = [
+            manager.handleUpdateFound(
+                version: "9.9.9", stage: .downloaded, releasePage: nil, informationOnly: false)
+        ]
+
+        XCTAssertEqual(choices, [.dismiss])
+        XCTAssertTrue(replies.isEmpty)
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
 
         manager.installNow()
 
-        let choice = manager.handleUpdateFound(
-            version: "9.9.9", stage: .downloaded, releasePage: nil, informationOnly: false)
+        choices.append(
+            manager.handleUpdateFound(
+                version: "9.9.9", stage: .downloaded, releasePage: nil, informationOnly: false)
+        )
 
-        XCTAssertEqual(choice, .install)
+        XCTAssertEqual(choices, [.dismiss, .install])
         XCTAssertEqual(manager.phase, .installing)
 
-        var choices: [SPUUserUpdateChoice] = []
-        manager.handleReadyToInstall { choices.append($0) }
-        XCTAssertEqual(choices, [.install])
+        manager.handleReadyToInstall { replies.append($0) }
+        XCTAssertEqual(replies, [.install])
     }
 
     func testDismissOfTheOldSessionKeepsTheArmedResume() {
@@ -422,6 +477,30 @@ final class UpdateManagerTests: XCTestCase {
         manager.handleResumeCheckExhausted()
 
         XCTAssertEqual(manager.phase, .installing)
+    }
+
+    func testReadyDuringAnArmedResumeEndsThePollAndHoldsTheCard() {
+        let spy = UpdaterSessionSpy()
+        spy.isInProgress = true
+        manager.updaterSession = spy.session
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .installing, releasePage: nil, informationOnly: false)
+        manager.beginRequestedResume(autoInstall: false)
+
+        var choices: [SPUUserUpdateChoice] = []
+        manager.handleReadyToInstall { choices.append($0) }
+
+        XCTAssertTrue(choices.isEmpty)
+        XCTAssertFalse(manager.resumeCheckPending)
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
+
+        manager.handleResumeCheckExhausted()
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
+
+        manager.installNow()
+
+        XCTAssertEqual(choices, [.install])
+        XCTAssertEqual(manager.resumeRequestCount, 1)
     }
 
     func testExhaustedResumeFailsAndDropsTheInstallConsent() {

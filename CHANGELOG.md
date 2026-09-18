@@ -8,8 +8,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- Retry after a failed update now always stops at "Ready to install" and asks
-  before installing, also when the update had already been downloaded.
+- Retry and Update never install on their own: a prepared update always stops at "Ready to install" and waits for "Install now".
 
 ## [3.3.0] - 2026-09-18
 
