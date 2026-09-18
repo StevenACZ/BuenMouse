@@ -17,8 +17,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Posted by macOS whenever the Accessibility trust database changes.
     private static let accessibilityChanged = Notification.Name("com.apple.accessibility.api")
 
+    /// The unit tests are hosted by the app; XCTest must not get the status
+    /// item, the onboarding window, the event tap, or the updater.
+    static let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        guard !Self.isRunningTests else { return }
 
         setupComponents()
         setupMenuBar()

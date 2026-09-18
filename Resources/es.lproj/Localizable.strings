@@ -97,14 +97,27 @@
 "statusitem.paused" = "BuenMouse — En pausa";
 
 /* In-app updates (Sparkle) */
-"menubar.update.available" = "Actualización disponible";
-"menubar.update.install_hint" = "v%@ — clic para instalar";
-"menubar.update.downloading" = "Descargando actualización…";
-"menubar.update.installing" = "Instalando actualización…";
-"menubar.update.relaunch" = "BuenMouse se relanzará solo";
-"menubar.update.failed" = "La actualización falló";
-"menubar.update.retry_hint" = "Clic para reintentar";
+"update.card.available.title" = "Nueva versión v%@ disponible";
+"update.card.available.title_generic" = "Nueva versión disponible";
+"update.card.available.subtitle" = "Descarga e instalación en un clic";
+"update.card.downloading.title" = "Descargando v%@…";
+"update.card.downloading.title_generic" = "Descargando…";
+"update.card.ready.title" = "v%@ lista para instalar";
+"update.card.ready.title_generic" = "Listo para instalar";
+"update.card.ready.subtitle" = "BuenMouse se cerrará y volverá a abrir solo";
+"update.card.installing.title" = "Instalando v%@…";
+"update.card.installing.title_generic" = "Instalando…";
+"update.card.installing.subtitle" = "Se reiniciará en un momento";
+"update.card.failed.title" = "No se pudo actualizar";
+"update.card.failed.subtitle" = "Revisa tu conexión e inténtalo de nuevo";
+"update.card.button.update" = "Actualizar";
+"update.card.button.install_now" = "Instalar ahora";
+"update.card.button.later" = "Más tarde";
+"update.card.button.retry" = "Reintentar";
+"update.card.percent" = "%d %%";
 "about.update.install" = "Instalar v%@";
+"about.update.install_now" = "Instalar v%@ ahora";
+"about.update.install_now_generic" = "Instalar ahora";
 "about.update.downloading" = "Descargando…";
 "about.update.installing" = "Instalando…";
 "about.update.retry" = "Falló la actualización — reintentar";

@@ -97,14 +97,27 @@
 "statusitem.paused" = "BuenMouse — Paused";
 
 /* In-app updates (Sparkle) */
-"menubar.update.available" = "Update available";
-"menubar.update.install_hint" = "v%@ — click to install";
-"menubar.update.downloading" = "Downloading update…";
-"menubar.update.installing" = "Installing update…";
-"menubar.update.relaunch" = "BuenMouse will relaunch by itself";
-"menubar.update.failed" = "Update failed";
-"menubar.update.retry_hint" = "Click to try again";
+"update.card.available.title" = "Version %@ is available";
+"update.card.available.title_generic" = "A new version is available";
+"update.card.available.subtitle" = "One-click download and install";
+"update.card.downloading.title" = "Downloading v%@…";
+"update.card.downloading.title_generic" = "Downloading…";
+"update.card.ready.title" = "v%@ ready to install";
+"update.card.ready.title_generic" = "Ready to install";
+"update.card.ready.subtitle" = "BuenMouse will quit and reopen by itself";
+"update.card.installing.title" = "Installing v%@…";
+"update.card.installing.title_generic" = "Installing…";
+"update.card.installing.subtitle" = "Restarting in a moment";
+"update.card.failed.title" = "Update failed";
+"update.card.failed.subtitle" = "Check your connection and try again";
+"update.card.button.update" = "Update";
+"update.card.button.install_now" = "Install now";
+"update.card.button.later" = "Later";
+"update.card.button.retry" = "Retry";
+"update.card.percent" = "%d %%";
 "about.update.install" = "Install v%@";
+"about.update.install_now" = "Install v%@ now";
+"about.update.install_now_generic" = "Install now";
 "about.update.downloading" = "Downloading…";
 "about.update.installing" = "Installing…";
 "about.update.retry" = "Update failed — try again";

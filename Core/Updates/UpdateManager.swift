@@ -5,10 +5,10 @@ import Sparkle
 import os
 
 /// In-app updates via Sparkle. The scheduled daily check only surfaces a
-/// pending update (menu row + About capsule); downloading, installing, and
-/// relaunching happen when the user clicks Install, with progress mirrored
-/// in `phase`. Scheduled-check failures stay silent; only a user-requested
-/// install surfaces errors.
+/// pending update (update card + About capsule); downloading happens when the
+/// user clicks Update, and installing + relaunching when the user then clicks
+/// Install now, with progress mirrored in `phase`. Scheduled-check failures
+/// stay silent; only a user-requested install surfaces errors.
 @MainActor
 final class UpdateManager: ObservableObject {
 
@@ -19,8 +19,14 @@ final class UpdateManager: ObservableObject {
         case available(version: String)
         /// nil fraction = size unknown yet (indeterminate spinner).
         case downloading(fraction: Double?)
+        case readyToInstall(version: String)
         case installing
         case failed(version: String)
+    }
+
+    struct UpdaterSession {
+        let isInProgress: @MainActor () -> Bool
+        let checkForUpdates: @MainActor () -> Void
     }
 
     enum ManualCheckStatus: Equatable {
@@ -33,6 +39,7 @@ final class UpdateManager: ObservableObject {
     /// Local appcast testing only:
     /// `defaults write oliverio23.BuenMouse updateFeedURLOverride <url>`.
     static let feedURLOverrideDefaultsKey = "updateFeedURLOverride"
+    static let resumeCheckMaxAttempts = 40
 
     @Published private(set) var phase: Phase = .idle
     /// GitHub release page of the pending update (the appcast item's <link>).
@@ -40,6 +47,13 @@ final class UpdateManager: ObservableObject {
     /// Ephemeral "you're up to date" feedback for the About window.
     @Published private(set) var manualCheckStatus: ManualCheckStatus = .idle
     @Published private(set) var autoCheckEnabled: Bool
+    @Published private(set) var pendingVersion: String?
+    @Published private(set) var canPostpone = false
+
+    var updaterSession: UpdaterSession?
+    var resumeCheckPollNanoseconds: UInt64 = 250_000_000
+    private(set) var resumeCheckPending = false
+    private(set) var resumeRequestCount = 0
 
     private let log = Logger(subsystem: "oliverio23.BuenMouse", category: "updates")
 
@@ -48,12 +62,14 @@ final class UpdateManager: ObservableObject {
     private var updaterDelegate: UpdaterDelegate?
 
     private var installRequested = false
-    private var pendingVersion: String?
+    private var installNowRequested = false
+    private var pendingInstallReply: ((SPUUserUpdateChoice) -> Void)?
     private var pendingIsInformationOnly = false
     private var expectedDownloadBytes: UInt64 = 0
     private var receivedDownloadBytes: UInt64 = 0
     private var manualCheckPending = false
     private var manualCheckResetTask: Task<Void, Never>?
+    private var resumeCheckTask: Task<Void, Never>?
 
     init() {
         // Defaults to enabled until the Settings toggle writes the key.
@@ -91,6 +107,10 @@ final class UpdateManager: ObservableObject {
         self.driver = driver
         self.updaterDelegate = updaterDelegate
         self.updater = updater
+        updaterSession = UpdaterSession(
+            isInProgress: { updater.sessionInProgress },
+            checkForUpdates: { updater.checkForUpdates() }
+        )
     }
 
     func setAutoCheckEnabled(_ enabled: Bool) {
@@ -101,18 +121,91 @@ final class UpdateManager: ObservableObject {
 
     // MARK: - User actions
 
-    /// Menu row / About capsule click: download + install + relaunch, or
-    /// retry after a failure. Information-only updates open the release page.
+    /// Update card / About capsule click: download the pending update and stop
+    /// at "ready to install". Information-only updates open the release page.
     func installPendingUpdate() {
-        guard let updater else { return }
+        guard let updaterSession else { return }
         if pendingIsInformationOnly {
             openReleasePage()
             return
         }
-        guard updater.sessionInProgress == false else { return }
+        guard updaterSession.isInProgress() == false else {
+            beginRequestedResume(autoInstall: false)
+            return
+        }
+        beginRequestedInstall()
+        updaterSession.checkForUpdates()
+    }
+
+    func beginRequestedInstall() {
         installRequested = true
         phase = .downloading(fraction: nil)
-        updater.checkForUpdates()
+    }
+
+    func installNow() {
+        guard phase != .installing else { return }
+        if let pendingInstallReply {
+            self.pendingInstallReply = nil
+            canPostpone = false
+            installRequested = true
+            phase = .installing
+            pendingInstallReply(.install)
+            return
+        }
+        guard updaterSession != nil else { return }
+        if case .failed = phase {
+            beginRequestedResume(autoInstall: false)
+            return
+        }
+        beginRequestedResume()
+    }
+
+    func installLater() {
+        guard let pendingInstallReply else { return }
+        self.pendingInstallReply = nil
+        canPostpone = false
+        installRequested = false
+        pendingInstallReply(.dismiss)
+    }
+
+    func beginRequestedResume(autoInstall: Bool = true) {
+        installRequested = true
+        installNowRequested = autoInstall
+        resumeCheckPending = true
+        phase = autoInstall ? .installing : .downloading(fraction: nil)
+        resumeRequestCount += 1
+        resumeCheckTask?.cancel()
+        requestResumeCheck(attempt: 0)
+    }
+
+    /// Sparkle refuses a check while the aborting session is still tearing
+    /// down; retry briefly instead of leaving the card stuck on "installing".
+    private func requestResumeCheck(attempt: Int) {
+        guard resumeCheckPending, let updaterSession else { return }
+        guard updaterSession.isInProgress() else {
+            resumeCheckPending = false
+            updaterSession.checkForUpdates()
+            return
+        }
+        guard attempt < Self.resumeCheckMaxAttempts else {
+            handleResumeCheckExhausted()
+            return
+        }
+        resumeCheckTask = Task { [weak self, interval = resumeCheckPollNanoseconds] in
+            try? await Task.sleep(nanoseconds: interval)
+            guard !Task.isCancelled else { return }
+            self?.requestResumeCheck(attempt: attempt + 1)
+        }
+    }
+
+    /// The prepared update never became resumable; drop the install consent
+    /// so no later scheduled check installs unattended.
+    func handleResumeCheckExhausted() {
+        guard resumeCheckPending else { return }
+        installRequested = false
+        installNowRequested = false
+        resumeCheckPending = false
+        phase = .failed(version: pendingVersion ?? "")
     }
 
     /// About window: explicit re-check with visible "up to date" feedback.
@@ -133,15 +226,30 @@ final class UpdateManager: ObservableObject {
 
     func handleUpdateFound(
         version: String,
+        stage: SPUUserUpdateStage,
         releasePage: URL?,
         informationOnly: Bool
     ) -> SPUUserUpdateChoice {
+        resumeCheckPending = false
         pendingVersion = version
         pendingIsInformationOnly = informationOnly
         releasePageURL = releasePage
         finishManualCheck(status: .idle)
 
+        guard stage == .notDownloaded else {
+            if (installRequested || installNowRequested) && !informationOnly {
+                phase = .installing
+                return .install
+            }
+            installRequested = false
+            installNowRequested = false
+            phase = .readyToInstall(version: version)
+            return .dismiss
+        }
+
+        installNowRequested = false
         if installRequested && !informationOnly {
+            phase = .downloading(fraction: nil)
             return .install
         }
         installRequested = false
@@ -170,9 +278,17 @@ final class UpdateManager: ObservableObject {
         phase = .installing
     }
 
-    func handleReadyToInstall() -> SPUUserUpdateChoice {
-        phase = .installing
-        return .install
+    func handleReadyToInstall(reply: @escaping (SPUUserUpdateChoice) -> Void) {
+        resumeCheckPending = false
+        if installNowRequested {
+            installNowRequested = false
+            phase = .installing
+            reply(.install)
+            return
+        }
+        pendingInstallReply = reply
+        canPostpone = true
+        phase = .readyToInstall(version: pendingVersion ?? "")
     }
 
     func handleInstalling() {
@@ -180,7 +296,15 @@ final class UpdateManager: ObservableObject {
     }
 
     func handleNotFound() {
+        guard !resumeCheckPending else {
+            pendingInstallReply = nil
+            canPostpone = false
+            return
+        }
         installRequested = false
+        installNowRequested = false
+        pendingInstallReply = nil
+        canPostpone = false
         pendingVersion = nil
         pendingIsInformationOnly = false
         releasePageURL = nil
@@ -191,26 +315,52 @@ final class UpdateManager: ObservableObject {
     /// Scheduled-check errors stay silent; a user-requested install shows
     /// a retryable failure row instead.
     func handleError(_ message: String) {
+        guard !resumeCheckPending else {
+            pendingInstallReply = nil
+            canPostpone = false
+            return
+        }
         finishManualCheck(status: .idle)
+        installNowRequested = false
+        pendingInstallReply = nil
+        canPostpone = false
         if installRequested, let pendingVersion {
             log.error("Update install failed: \(message, privacy: .public)")
             phase = .failed(version: pendingVersion)
         } else {
             log.debug("Update check failed silently")
-            phase = pendingVersion.map { .available(version: $0) } ?? .idle
+            switch phase {
+            case .readyToInstall, .installing:
+                phase = .readyToInstall(version: pendingVersion ?? "")
+            case .idle, .available, .downloading, .failed:
+                phase = pendingVersion.map { .available(version: $0) } ?? .idle
+            }
         }
         installRequested = false
     }
 
-    /// Sparkle tears the session down (abort or completion). Keep the
-    /// pending row alive; only roll back an in-flight progress state.
+    /// Sparkle tears the session down (abort or completion). Keep the pending
+    /// row alive; only roll back an unfinished download, a prepared update
+    /// stays offered as ready to install. The install consent dies with the
+    /// session so no later scheduled check installs unattended.
     func handleDismissInstallation() {
+        guard !resumeCheckPending else {
+            pendingInstallReply = nil
+            canPostpone = false
+            return
+        }
         switch phase {
-        case .downloading, .installing:
+        case .downloading:
             phase = pendingVersion.map { .available(version: $0) } ?? .idle
+        case .installing, .readyToInstall:
+            phase = .readyToInstall(version: pendingVersion ?? "")
         case .idle, .available, .failed:
             break
         }
+        installRequested = false
+        installNowRequested = false
+        pendingInstallReply = nil
+        canPostpone = false
     }
 
     private func finishManualCheck(status: ManualCheckStatus) {
@@ -256,6 +406,7 @@ private final class Driver: NSObject, SPUUserDriver {
     ) {
         let choice = manager.handleUpdateFound(
             version: appcastItem.displayVersionString,
+            stage: state.stage,
             releasePage: appcastItem.infoURL,
             informationOnly: appcastItem.isInformationOnlyUpdate
         )
@@ -295,7 +446,7 @@ private final class Driver: NSObject, SPUUserDriver {
     func showExtractionReceivedProgress(_ progress: Double) {}
 
     func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
-        reply(manager.handleReadyToInstall())
+        manager.handleReadyToInstall(reply: reply)
     }
 
     func showInstallingUpdate(

@@ -77,9 +77,10 @@ Use the Makefile for the standard local gate:
 make ci-check
 ```
 
-- `make ci-check` runs Swift formatting lint plus a Release build.
-- The project does not have a unit test target yet; there is no `make test`
-  gate.
+- `make ci-check` runs Swift formatting lint, the unit tests, plus a Release
+  build.
+- Unit tests live in the `BuenMouseTests` target and run with `make test`;
+  `ci-check` and `release-check` both include them.
 - Use `make format` / `make lint` before commits; optional Lefthook via
   `make hooks-install`.
 - Run `git diff --check` before staging or reporting a patch done.
