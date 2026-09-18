@@ -41,7 +41,7 @@ final class UpdateManager: ObservableObject {
     /// Local appcast testing only:
     /// `defaults write oliverio23.BuenMouse updateFeedURLOverride <url>`.
     static let feedURLOverrideDefaultsKey = "updateFeedURLOverride"
-    static let resumeCheckMaxAttempts = 40
+    static let resumeCheckMaxAttempts = 300
     static let backgroundCheckThrottle: TimeInterval = 5 * 60
 
     @Published private(set) var phase: Phase = .idle
@@ -276,7 +276,11 @@ final class UpdateManager: ObservableObject {
     /// Sparkle refuses a check while the aborting session is still tearing
     /// down; retry briefly instead of leaving the card stuck on "installing".
     private func requestResumeCheck(attempt: Int) {
-        guard resumeCheckPending, let updaterSession else { return }
+        guard resumeCheckPending else { return }
+        guard let updaterSession else {
+            handleResumeCheckExhausted()
+            return
+        }
         guard updaterSession.isInProgress() else {
             resumeCheckPending = false
             updaterSession.checkForUpdates()
@@ -436,7 +440,6 @@ final class UpdateManager: ObservableObject {
             canPostpone = false
             return
         }
-        guard sessionIsUserDriven || phase == .idle else { return }
         installRequested = false
         installNowRequested = false
         pendingInstallReply = nil
@@ -456,7 +459,6 @@ final class UpdateManager: ObservableObject {
             canPostpone = false
             return
         }
-        guard sessionIsUserDriven || phase == .idle else { return }
         finishManualCheck(status: .idle)
         installNowRequested = false
         pendingInstallReply = nil

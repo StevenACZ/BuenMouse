@@ -370,6 +370,15 @@ final class UpdateManagerTests: XCTestCase {
         XCTAssertEqual(manager.phase, .failed(version: "9.9.9"))
     }
 
+    func testTheResumePollOutlastsASlowAppcastFetch() {
+        let freshManager = UpdateManager()
+        let window =
+            Double(UpdateManager.resumeCheckMaxAttempts)
+            * Double(freshManager.resumeCheckPollNanoseconds) / 1_000_000_000
+
+        XCTAssertGreaterThanOrEqual(window, 70)
+    }
+
     // MARK: - Retry never skips consent
 
     func testRetryAfterAFailedDownloadStopsAtReadyToInstall() {
@@ -544,6 +553,16 @@ final class UpdateManagerTests: XCTestCase {
         XCTAssertEqual(manager.phase, .failed(version: "9.9.9"))
     }
 
+    func testAResumeWithoutALiveUpdaterFailsInsteadOfStayingPending() {
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .installing, releasePage: nil, informationOnly: false)
+
+        manager.beginRequestedResume()
+
+        XCTAssertFalse(manager.resumeCheckPending)
+        XCTAssertEqual(manager.phase, .failed(version: "9.9.9"))
+    }
+
     // MARK: - Errors
 
     func testUserRequestedInstallFailureSurfacesTheRetry() {
@@ -627,11 +646,8 @@ final class UpdateManagerTests: XCTestCase {
     }
 
     func testNotFoundClearsPendingState() {
-        let spy = UpdaterSessionSpy()
-        manager.updaterSession = spy.session
         _ = manager.handleUpdateFound(
             version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
-        manager.checkForUpdatesManually()
 
         manager.handleNotFound()
 
@@ -816,6 +832,12 @@ final class UpdateManagerTests: XCTestCase {
     private func armLaterState() {
         _ = manager.handleUpdateFound(
             version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.installPendingUpdate()
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.handleDownloadInitiated()
+        manager.handleDownloadExpectedLength(100)
+        manager.handleDownloadReceived(bytes: 100)
         manager.handleReadyToInstall { _ in }
         manager.installLater()
     }
@@ -865,6 +887,7 @@ final class UpdateManagerTests: XCTestCase {
     }
 
     func testThePostLaterReadyCardBlocksAQuietCheck() {
+        armDiscovery()
         armLaterState()
 
         XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
@@ -950,6 +973,7 @@ final class UpdateManagerTests: XCTestCase {
     }
 
     func testAnUnattendedRestagedUpdateKeepsTheReadyCardAfterLater() {
+        armDiscovery()
         armLaterState()
 
         let choice = manager.handleUpdateFound(
@@ -958,6 +982,17 @@ final class UpdateManagerTests: XCTestCase {
         XCTAssertEqual(choice, .dismiss)
         XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
         XCTAssertFalse(manager.canPostpone)
+    }
+
+    func testLaterDropsTheInstallConsentSoAnUnattendedFindOnlyDismisses() {
+        armDiscovery()
+        armLaterState()
+
+        let choice = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+
+        XCTAssertEqual(choice, .dismiss)
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
     }
 
     func testAnUnattendedOlderVersionLeavesTheCardUntouched() {
@@ -992,26 +1027,6 @@ final class UpdateManagerTests: XCTestCase {
 
         XCTAssertEqual(choice, .dismiss)
         XCTAssertEqual(manager.phase, .available(version: "9.9.10"))
-    }
-
-    func testAnUnattendedNotFoundKeepsTheAvailableCard() {
-        _ = manager.handleUpdateFound(
-            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
-
-        manager.handleNotFound()
-
-        XCTAssertEqual(manager.phase, .available(version: "9.9.9"))
-        XCTAssertEqual(manager.pendingVersion, "9.9.9")
-        XCTAssertEqual(manager.manualCheckStatus, .idle)
-    }
-
-    func testAnUnattendedErrorKeepsTheFailedCard() {
-        armDiscovery()
-        armFailedCard()
-
-        manager.handleError("feed unreachable")
-
-        XCTAssertEqual(manager.phase, .failed(version: "9.9.9"))
     }
 
     func testNotFoundAndErrorAtIdleStillClearEverything() {
