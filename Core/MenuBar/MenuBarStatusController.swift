@@ -103,6 +103,7 @@ final class MenuBarStatusController: NSObject, NSPopoverDelegate, NSWindowDelega
             }
             refreshPopoverSize()
             button.state = .on
+            UpdateManager.shared.popoverDidOpen()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             NSApp.activate(ignoringOtherApps: true)
             DispatchQueue.main.async { [weak self] in
@@ -171,6 +172,7 @@ final class MenuBarStatusController: NSObject, NSPopoverDelegate, NSWindowDelega
 
     func openAboutWindow() {
         closePopover()
+        UpdateManager.shared.popoverDidOpen()
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.aboutWindow = self.present(
