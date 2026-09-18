@@ -6,6 +6,23 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-09-18
+
+### Added
+
+- Update card in the menu bar panel: new versions now appear as a card with
+  live download progress and a "Ready to install" step that offers Install now
+  or Later. Later keeps the update ready and installs it the next time you quit
+  BuenMouse, and the About window shows the pending update until then.
+
+### Changed
+
+- Use a larger draggable app icon, content-sized permission guidance, and a consistent blue Accessibility accent.
+- Keep permission setup open until explicit completion, distinguish working mouse monitoring from granted access, and preserve paused monitoring.
+- Follow System Settings smoothly only while guidance is visible, with cached window tracking and reduced-motion support.
+- Integrate native window chrome and improve permission button hit areas.
+- Retry after a failed update downloads it again and still asks before installing.
+
 ### Fixed
 
 - Control + left click works again as the macOS secondary click. An

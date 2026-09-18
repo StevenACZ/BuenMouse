@@ -48,6 +48,12 @@ real window is created and owned by AppKit controllers. Never reintroduce a
 UI conventions: SwiftUI content hosted in AppKit windows via
 `NSHostingController`; window content is rebuilt on each show and dropped on
 close so timers never run hidden; appearance always follows the system.
+Welcome height follows measured content for every state/language. Do not use
+fixed heights or vertical spacers to fill empty space. With manual sizing,
+use a native NSView window root with a child NSHostingView whose sizing options
+are disabled; measure detached content with intrinsic sizing before mounting.
+Defer occlusion-driven refits outside layout callbacks. Verify the installed
+window has no titlebar-height bands or constraint-update crash in every state.
 
 ## Guardrails
 
@@ -71,9 +77,10 @@ Use the Makefile for the standard local gate:
 make ci-check
 ```
 
-- `make ci-check` runs Swift formatting lint plus a Release build.
-- The project does not have a unit test target yet; there is no `make test`
-  gate.
+- `make ci-check` runs Swift formatting lint, the unit tests, plus a Release
+  build.
+- Unit tests live in the `BuenMouseTests` target and run with `make test`;
+  `ci-check` and `release-check` both include them.
 - Use `make format` / `make lint` before commits; optional Lefthook via
   `make hooks-install`.
 - Run `git diff --check` before staging or reporting a patch done.
@@ -126,3 +133,6 @@ Crash reports land under `~/Library/Logs/DiagnosticReports/BuenMouse-*.ips`.
   deletion, tag, or release publication without explicit approval.
 - Do not revert unrelated user changes.
 - Use Conventional Commits if asked to commit.
+
+Permission colors: screen red, Accessibility blue, microphone orange, system audio teal,
+Input Monitoring purple, Speech Recognition indigo, Local Network cyan; green means granted/ready. Keep labels and icons.

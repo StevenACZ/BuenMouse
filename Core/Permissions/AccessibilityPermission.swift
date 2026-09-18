@@ -1,7 +1,6 @@
 import AppKit
 import ApplicationServices
 
-/// Single source of truth for the only permission BuenMouse needs.
 enum AccessibilityPermission {
     static var isGranted: Bool {
         AXIsProcessTrusted()

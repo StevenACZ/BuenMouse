@@ -17,8 +17,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Posted by macOS whenever the Accessibility trust database changes.
     private static let accessibilityChanged = Notification.Name("com.apple.accessibility.api")
 
+    /// The unit tests are hosted by the app; XCTest must not get the status
+    /// item, the onboarding window, the event tap, or the updater.
+    static let isRunningTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        guard !Self.isRunningTests else { return }
 
         setupComponents()
         setupMenuBar()
@@ -92,6 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.onOpenPermissions = { [weak self] in
             self?.showPermissionOnboarding()
         }
+        controller.isMonitoringReady = { [weak self] in self?.eventMonitor?.isReady == true }
         menuBarController = controller
         controller.start()
     }
@@ -135,22 +141,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if permissionWindowController == nil {
             let controller = PermissionWindowController()
-            controller.onPermissionGranted = { [weak self] in
-                self?.handlePermissionGranted()
+            controller.readiness = { [weak self] in
+                self?.permissionReadiness() ?? .unavailable
             }
             permissionWindowController = controller
         }
         permissionWindowController?.show()
     }
 
-    private func handlePermissionGranted() {
-        os_log("Accessibility permission granted — starting monitoring", log: .default, type: .info)
+    private func permissionReadiness() -> PermissionReadiness {
         applyMonitoringState()
-
-        // Give the user 1 s to see the "You're all set!" success state, then close.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.permissionWindowController?.close()
-            self?.permissionWindowController = nil
-        }
+        guard AccessibilityPermission.isGranted else { return .needsPermission }
+        guard settingsManager.isMonitoringActive else { return .paused }
+        return eventMonitor?.isReady == true ? .ready : .unavailable
     }
 }

@@ -30,10 +30,11 @@ struct SettingsView<Settings: SettingsProtocol>: View {
             generalSection
         }
         .padding(.horizontal, 24)
-        .padding(.top, 18)
+        .padding(.top, 40)
         .padding(.bottom, 20)
         .frame(width: 470)
         .background(Color(nsColor: .windowBackgroundColor))
+        .ignoresSafeArea(.container, edges: .top)
         .alert("settings.reset.alert.title".localized, isPresented: $showResetConfirmation) {
             Button("settings.reset.alert.confirm".localized, role: .destructive) { settings.resetToDefaults() }
             Button("settings.reset.alert.cancel".localized, role: .cancel) {}
@@ -82,6 +83,7 @@ struct SettingsView<Settings: SettingsProtocol>: View {
                             (settings.isMonitoringActive ? Color.green : Color.gray).opacity(0.25),
                             lineWidth: 1)
                 )
+                .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .help("settings.status.help".localized)

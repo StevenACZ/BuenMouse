@@ -45,6 +45,12 @@ struct MenuBarView<Settings: SettingsProtocol>: View {
 
             Divider()
 
+            if updateManager.phase != .idle {
+                UpdateCard(manager: updateManager)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 12)
+            }
+
             if !isPermissionGranted {
                 PermissionBanner(action: openPermissions)
                 Divider()
@@ -55,12 +61,6 @@ struct MenuBarView<Settings: SettingsProtocol>: View {
 
             Divider()
                 .padding(.horizontal, 12)
-
-            if updateManager.phase != .idle {
-                UpdateMenuRow(manager: updateManager)
-
-                Divider().padding(.horizontal, 16)
-            }
 
             ActionRow(
                 icon: "gearshape",
