@@ -37,6 +37,11 @@ final class EventMonitor {
 
     var isMonitoring: Bool { eventTap != nil }
 
+    var isReady: Bool {
+        guard let eventTap, runLoopSource != nil, CFMachPortIsValid(eventTap) else { return false }
+        return CGEvent.tapIsEnabled(tap: eventTap)
+    }
+
     func startMonitoring() {
         guard eventTap == nil else { return }
 

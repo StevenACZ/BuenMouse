@@ -6,6 +6,13 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Use a larger draggable app icon, content-sized permission guidance, and a consistent blue Accessibility accent.
+- Keep permission setup open until explicit completion, distinguish working mouse monitoring from granted access, and preserve paused monitoring.
+- Follow System Settings smoothly only while guidance is visible, with cached window tracking and reduced-motion support.
+- Integrate native window chrome and improve permission button hit areas.
+
 ### Fixed
 
 - Control + left click works again as the macOS secondary click. An

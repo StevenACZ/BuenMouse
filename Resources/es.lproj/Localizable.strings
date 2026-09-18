@@ -86,9 +86,9 @@
 "permissions.footer.later" = "Más tarde";
 
 /* Permission drag overlay */
-"overlay.title" = "Arrastra BuenMouse a Accesibilidad";
+"overlay.title" = "Activa Accesibilidad";
 "overlay.close" = "Cerrar";
-"overlay.message" = "Toma la tarjeta de abajo y suéltala sobre la lista de Accesibilidad. BuenMouse aparecerá ahí con su interruptor ya encendido.";
+"overlay.message" = "Arrastra la tarjeta a la lista y activa su interruptor si se solicita.";
 "overlay.footnote" = "O haz clic en \"+\" en Configuración del Sistema y elige BuenMouse manualmente.";
 "overlay.drag_source.subtitle" = "Arrastra a la lista de Accesibilidad";
 
@@ -113,3 +113,15 @@
 "about.update.up_to_date" = "Estás al día";
 "settings.updates.title" = "Buscar actualizaciones automáticamente";
 "settings.updates.subtitle" = "Consulta GitHub Releases una vez al día. No se envía nada.";
+
+"permissions.paused.description" = "Accesibilidad está activada. El seguimiento está en pausa; reanúdalo desde la barra de menú cuando quieras.";
+
+"permissions.unavailable.description" = "Accesibilidad está activada, pero no se pudo iniciar el seguimiento del mouse. Reintenta o cierra y vuelve a abrir BuenMouse si sigue fallando.";
+
+"permissions.retry" = "Reintentar seguimiento";
+
+"permissions.automation.note" = "Algunos gestos del escritorio pueden pedir controlar System Events al usarlos por primera vez.";
+
+"permissions.paused.status" = "Seguimiento en pausa";
+
+"settings.window.title" = "Ajustes de BuenMouse";

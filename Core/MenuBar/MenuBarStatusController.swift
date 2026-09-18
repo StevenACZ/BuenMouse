@@ -12,6 +12,7 @@ final class MenuBarStatusController: NSObject, NSPopoverDelegate, NSWindowDelega
 
     /// Set by the AppDelegate — opens the Accessibility onboarding window.
     var onOpenPermissions: (() -> Void)?
+    var isMonitoringReady: () -> Bool = { false }
 
     private var statusItem: NSStatusItem?
     private var popover: NSPopover?
@@ -48,7 +49,7 @@ final class MenuBarStatusController: NSObject, NSPopoverDelegate, NSWindowDelega
 
     private func currentStatusImage() -> NSImage? {
         let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .medium)
-        let active = settings.isMonitoringActive && AccessibilityPermission.isGranted
+        let active = settings.isMonitoringActive && AccessibilityPermission.isGranted && isMonitoringReady()
         let name = active ? "computermouse.fill" : "computermouse"
         let description = active ? "statusitem.active".localized : "statusitem.paused".localized
         let image = NSImage(systemSymbolName: name, accessibilityDescription: description)?
@@ -198,6 +199,7 @@ final class MenuBarStatusController: NSObject, NSPopoverDelegate, NSWindowDelega
             )
             target.titleVisibility = .hidden
             target.titlebarAppearsTransparent = true
+            target.titlebarSeparatorStyle = .none
             target.isReleasedWhenClosed = false
             target.standardWindowButton(.miniaturizeButton)?.isHidden = true
             target.standardWindowButton(.zoomButton)?.isHidden = true
@@ -205,6 +207,7 @@ final class MenuBarStatusController: NSObject, NSPopoverDelegate, NSWindowDelega
             target.setFrameAutosaveName(autosaveName)
         }
 
+        target.title = autosaveName == "BuenMouseSettingsWindow" ? "settings.window.title".localized : "BuenMouse"
         let wasVisible = target.isVisible
         target.contentViewController = hosting
         target.setContentSize(hosting.view.fittingSize)

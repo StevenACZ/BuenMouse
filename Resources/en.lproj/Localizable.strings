@@ -86,9 +86,9 @@
 "permissions.footer.later" = "Later";
 
 /* Permission drag overlay */
-"overlay.title" = "Drag BuenMouse into Accessibility";
+"overlay.title" = "Allow Accessibility";
 "overlay.close" = "Close";
-"overlay.message" = "Pick up the card below and drop it onto the Accessibility list. BuenMouse will appear there with its toggle already on.";
+"overlay.message" = "Drag the card into the list, then enable its switch if asked.";
 "overlay.footnote" = "Or click \"+\" in System Settings and pick BuenMouse manually.";
 "overlay.drag_source.subtitle" = "Drag onto the Accessibility list";
 
@@ -113,3 +113,15 @@
 "about.update.up_to_date" = "You're up to date";
 "settings.updates.title" = "Check for updates automatically";
 "settings.updates.subtitle" = "Checks GitHub Releases once a day. Nothing is sent.";
+
+"permissions.paused.description" = "Accessibility is enabled. Monitoring is paused; resume it from the menu bar whenever you are ready.";
+
+"permissions.unavailable.description" = "Accessibility is enabled, but mouse monitoring could not start. Retry, or quit and reopen BuenMouse if it still fails.";
+
+"permissions.retry" = "Retry monitoring";
+
+"permissions.automation.note" = "Some desktop gestures may ask to control System Events when you first use them.";
+
+"permissions.paused.status" = "Monitoring paused";
+
+"settings.window.title" = "BuenMouse Settings";

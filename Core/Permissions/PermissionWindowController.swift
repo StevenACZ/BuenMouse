@@ -1,16 +1,15 @@
 import AppKit
 import SwiftUI
 
-/// Owns the lifetime of the permission onboarding window. Notifies the app
-/// delegate when the user grants Accessibility so monitoring can start.
 final class PermissionWindowController: NSWindowController, NSWindowDelegate {
-    /// Fires once the permission flips from denied → granted. The window
-    /// closes shortly after; the delegate decides what to do next.
-    var onPermissionGranted: (() -> Void)?
+    var readiness: () -> PermissionReadiness = { .needsPermission }
+    private let state = PermissionSetupState()
 
-    private var hostingController: NSHostingController<PermissionRequirementsView>?
+    private var hostingView: NSHostingView<PermissionRequirementsView>?
     private var pollTimer: Timer?
-    private var hasNotified: Bool = false
+    private var measuredSize: NSSize?
+    private var measuredReadiness: PermissionReadiness?
+    private var measuredLanguage: String?
 
     init() {
         super.init(window: nil)
@@ -28,18 +27,16 @@ final class PermissionWindowController: NSWindowController, NSWindowDelegate {
             return
         }
 
-        let view = PermissionRequirementsView(
-            onActivate: { [weak self] in self?.handleActivate() },
-            onClose: { [weak self] in self?.close() }
-        )
-        let hosting = NSHostingController(rootView: view)
-        // Track the SwiftUI content size so the window always hugs the
-        // content — no dead space, and state changes resize it for free.
-        hosting.sizingOptions = .preferredContentSize
-        hostingController = hosting
-
-        let size = hosting.sizeThatFits(
-            in: NSSize(width: PermissionRequirementsView.contentWidth, height: .greatestFiniteMagnitude))
+        state.readiness = readiness()
+        guard let size = measureContentSize() else { return }
+        measuredSize = size
+        measuredReadiness = state.readiness
+        measuredLanguage = LocalizationManager.shared.language
+        let hosting = NSHostingView(rootView: makeContent())
+        hosting.sizingOptions = []
+        hosting.safeAreaRegions = []
+        hosting.frame = NSRect(origin: .zero, size: size)
+        hostingView = hosting
 
         let win = NSWindow(
             contentRect: NSRect(origin: .zero, size: size),
@@ -50,40 +47,47 @@ final class PermissionWindowController: NSWindowController, NSWindowDelegate {
         win.title = "permissions.window.title".localized
         win.titleVisibility = .hidden
         win.titlebarAppearsTransparent = true
+        win.titlebarSeparatorStyle = .none
+        win.backgroundColor = .windowBackgroundColor
         win.isReleasedWhenClosed = false
         win.isMovableByWindowBackground = false
         win.delegate = self
         win.standardWindowButton(.miniaturizeButton)?.isHidden = true
         win.standardWindowButton(.zoomButton)?.isHidden = true
-        win.contentViewController = hosting
-        win.setContentSize(size)
-        win.center()
+        win.setFrame(NSRect(origin: .zero, size: size), display: false)
+        win.contentView = PermissionWindowSurface(content: hosting, size: size)
+        hosting.sizingOptions = []
         self.window = win
 
-        hasNotified = AccessibilityPermission.isGranted
-        startPolling()
-
+        checkForTransition()
+        win.center()
         presentAnimated(win)
+        startPolling()
     }
 
-    /// Gentle fade-and-rise entrance instead of popping into place.
+    private func makeContent() -> PermissionRequirementsView {
+        PermissionRequirementsView(
+            state: state,
+            onActivate: { [weak self] in self?.handleActivate() },
+            onClose: { [weak self] in self?.close() }
+        )
+    }
+
     private func presentAnimated(_ win: NSWindow) {
-        let finalFrame = win.frame
-        var startFrame = finalFrame
-        startFrame.origin.y -= 14
-
         win.alphaValue = 0
-        win.setFrame(startFrame, display: false)
-
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
-        win.orderFrontRegardless()
-
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.28
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            win.animator().setFrame(finalFrame, display: true)
-            win.animator().alphaValue = 1
+        DispatchQueue.main.async { [weak self, weak win] in
+            guard let self, let win, self.window === win, win.isVisible else { return }
+            self.checkForTransition()
+            if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+                win.alphaValue = 1
+            } else {
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.18
+                    win.animator().alphaValue = 1
+                }
+            }
         }
     }
 
@@ -93,7 +97,10 @@ final class PermissionWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func handleActivate() {
-        guard !AccessibilityPermission.isGranted else { return }
+        if AccessibilityPermission.isGranted {
+            checkForTransition()
+            return
+        }
         let sourceFrame = sourceFrameForOverlay()
         PermissionAssistant.shared.present(sourceFrameInScreen: sourceFrame)
     }
@@ -125,19 +132,81 @@ final class PermissionWindowController: NSWindowController, NSWindowDelegate {
     }
 
     private func checkForTransition() {
-        let granted = AccessibilityPermission.isGranted
-        guard granted, !hasNotified else { return }
-        hasNotified = true
-        PermissionAssistant.shared.dismiss()
-        onPermissionGranted?()
+        guard window?.isVisible == true || hostingView != nil else { return }
+        let current = readiness()
+        if state.readiness != current { state.readiness = current }
+        if state.readiness != .needsPermission { PermissionAssistant.shared.dismiss() }
+        guard let window, hostingView != nil else { return }
+        let language = LocalizationManager.shared.language
+        if measuredReadiness != current || measuredLanguage != language {
+            guard let size = measureContentSize() else { return }
+            measuredSize = size
+            measuredReadiness = current
+            measuredLanguage = language
+        }
+        guard let measuredSize else { return }
+        var frame = window.frame
+        frame.origin.y = frame.maxY - measuredSize.height
+        frame.size = measuredSize
+        guard window.frame != frame else { return }
+        window.setFrame(frame, display: true)
+    }
+
+    private func measureContentSize() -> NSSize? {
+        let sizingView = NSHostingView(rootView: makeContent())
+        sizingView.sizingOptions = .intrinsicContentSize
+        sizingView.safeAreaRegions = []
+        let size = sizingView.fittingSize
+        guard size.height.isFinite, size.height > 0 else { return nil }
+        return NSSize(width: PermissionRequirementsView.contentWidth, height: ceil(size.height))
     }
 
     // MARK: - NSWindowDelegate
 
+    func windowDidChangeOcclusionState(_ notification: Notification) {
+        if window?.occlusionState.contains(.visible) == true {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.window?.occlusionState.contains(.visible) == true else { return }
+                self.checkForTransition()
+                self.startPolling()
+            }
+        } else {
+            stopPolling()
+        }
+    }
+
     func windowWillClose(_ notification: Notification) {
         stopPolling()
         PermissionAssistant.shared.dismiss()
-        hostingController = nil
+        hostingView = nil
+        measuredSize = nil
+        measuredReadiness = nil
+        measuredLanguage = nil
+        window?.contentView = nil
         window = nil
+    }
+}
+
+private final class PermissionWindowSurface: NSView {
+    init(content: NSView, size: NSSize) {
+        super.init(frame: NSRect(origin: .zero, size: size))
+        wantsLayer = true
+        content.frame = bounds
+        content.autoresizingMask = [.width, .height]
+        addSubview(content)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.backgroundColor = permissionCGColor(.windowBackgroundColor)
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
     }
 }

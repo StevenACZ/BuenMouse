@@ -3,9 +3,12 @@ import AppKit
 /// Floating helper card shown on top of System Settings. Contains the arrow
 /// hint, the draggable BuenMouse card, and a fallback footnote.
 final class PermissionOverlayContentView: NSView {
-    static let preferredSize = NSSize(width: 520, height: 184)
+    static let preferredSize = NSSize(width: 400, height: 190)
 
     private let onClose: () -> Void
+    private var measurementWidth: NSLayoutConstraint?
+    private var measuredSize: NSSize?
+    private var wrappingLabels: [(NSTextField, CGFloat)] = []
 
     init(hostApp: PermissionHostApp, accentColor: NSColor, onClose: @escaping () -> Void) {
         self.onClose = onClose
@@ -19,6 +22,19 @@ final class PermissionOverlayContentView: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    func preferredHeight(for width: CGFloat) -> CGFloat {
+        if let measuredSize, measuredSize.width == width { return measuredSize.height }
+        measurementWidth?.constant = width
+        for (label, inset) in wrappingLabels {
+            label.preferredMaxLayoutWidth = max(1, width - inset)
+            label.invalidateIntrinsicContentSize()
+        }
+        layoutSubtreeIfNeeded()
+        let height = ceil(fittingSize.height)
+        measuredSize = NSSize(width: width, height: height)
+        return height
+    }
+
     private func setup(hostApp: PermissionHostApp, accentColor: NSColor) {
         let cardView = PermissionOverlayCardContainerView()
         addSubview(cardView)
@@ -30,7 +46,7 @@ final class PermissionOverlayContentView: NSView {
         arrowView.contentTintColor = accentColor
         cardView.addSubview(arrowView)
 
-        let titleLabel = NSTextField(labelWithString: "overlay.title".localized)
+        let titleLabel = NSTextField(wrappingLabelWithString: "overlay.title".localized)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.font = .systemFont(ofSize: 16, weight: .semibold)
         titleLabel.textColor = .labelColor
@@ -61,10 +77,10 @@ final class PermissionOverlayContentView: NSView {
         footnoteLabel.textColor = .tertiaryLabelColor
         cardView.addSubview(footnoteLabel)
 
+        wrappingLabels = [(titleLabel, 108), (messageLabel, 46), (footnoteLabel, 48)]
+        measurementWidth = widthAnchor.constraint(equalToConstant: Self.preferredSize.width)
+        measurementWidth?.isActive = true
         NSLayoutConstraint.activate([
-            widthAnchor.constraint(equalToConstant: Self.preferredSize.width),
-            heightAnchor.constraint(equalToConstant: Self.preferredSize.height),
-
             cardView.leadingAnchor.constraint(equalTo: leadingAnchor),
             cardView.trailingAnchor.constraint(equalTo: trailingAnchor),
             cardView.topAnchor.constraint(equalTo: topAnchor),
@@ -76,7 +92,8 @@ final class PermissionOverlayContentView: NSView {
             arrowView.heightAnchor.constraint(equalToConstant: 24),
 
             titleLabel.leadingAnchor.constraint(equalTo: arrowView.trailingAnchor, constant: 10),
-            titleLabel.centerYAnchor.constraint(equalTo: arrowView.centerYAnchor),
+            titleLabel.topAnchor.constraint(equalTo: arrowView.topAnchor),
+            titleLabel.heightAnchor.constraint(greaterThanOrEqualToConstant: 24),
             titleLabel.trailingAnchor.constraint(equalTo: closeButton.leadingAnchor, constant: -12),
 
             closeButton.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -16),
@@ -86,16 +103,17 @@ final class PermissionOverlayContentView: NSView {
 
             messageLabel.leadingAnchor.constraint(equalTo: arrowView.leadingAnchor),
             messageLabel.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -22),
-            messageLabel.topAnchor.constraint(equalTo: arrowView.bottomAnchor, constant: 12),
+            messageLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 12),
 
             dragView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 24),
             dragView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -24),
             dragView.topAnchor.constraint(equalTo: messageLabel.bottomAnchor, constant: 14),
-            dragView.heightAnchor.constraint(equalToConstant: 56),
+            dragView.heightAnchor.constraint(equalToConstant: 64),
 
             footnoteLabel.leadingAnchor.constraint(equalTo: dragView.leadingAnchor),
             footnoteLabel.trailingAnchor.constraint(equalTo: dragView.trailingAnchor),
             footnoteLabel.topAnchor.constraint(equalTo: dragView.bottomAnchor, constant: 10),
+            footnoteLabel.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -18),
         ])
     }
 
