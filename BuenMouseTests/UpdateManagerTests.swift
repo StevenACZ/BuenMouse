@@ -1,3 +1,4 @@
+import AppKit
 import Sparkle
 import XCTest
 
@@ -7,7 +8,9 @@ import XCTest
 private final class UpdaterSessionSpy {
     var isInProgress = false
     var checkCount = 0
+    var backgroundCheckCount = 0
     var onCheckForUpdates: (() -> Void)?
+    var onCheckForUpdatesInBackground: (() -> Void)?
 
     var session: UpdateManager.UpdaterSession {
         UpdateManager.UpdaterSession(
@@ -15,6 +18,10 @@ private final class UpdaterSessionSpy {
             checkForUpdates: {
                 self.checkCount += 1
                 self.onCheckForUpdates?()
+            },
+            checkForUpdatesInBackground: {
+                self.backgroundCheckCount += 1
+                self.onCheckForUpdatesInBackground?()
             }
         )
     }
@@ -24,11 +31,28 @@ private final class UpdaterSessionSpy {
 final class UpdateManagerTests: XCTestCase {
 
     private var manager: UpdateManager!
+    private var savedAutoCheckDefault: Any?
+    private var discoveryNow: TimeInterval = 0
 
     override func setUp() async throws {
         try await super.setUp()
+        savedAutoCheckDefault = UserDefaults.standard.object(
+            forKey: UpdateManager.autoCheckDefaultsKey)
         manager = UpdateManager()
         manager.resumeCheckPollNanoseconds = 1_000
+    }
+
+    override func tearDown() async throws {
+        manager.stopBackgroundDiscovery()
+        manager = nil
+        if let savedAutoCheckDefault {
+            UserDefaults.standard.set(
+                savedAutoCheckDefault, forKey: UpdateManager.autoCheckDefaultsKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: UpdateManager.autoCheckDefaultsKey)
+        }
+        savedAutoCheckDefault = nil
+        try await super.tearDown()
     }
 
     // MARK: - Scheduled check surfaces a pending card
@@ -610,5 +634,279 @@ final class UpdateManagerTests: XCTestCase {
 
         XCTAssertEqual(manager.phase, .idle)
         XCTAssertNil(manager.releasePageURL)
+    }
+
+    // MARK: - Silent discovery
+
+    @discardableResult
+    private func armDiscovery(sessionInProgress: Bool = false) -> UpdaterSessionSpy {
+        let spy = UpdaterSessionSpy()
+        spy.isInProgress = sessionInProgress
+        discoveryNow = 0
+        manager.setAutoCheckEnabled(true)
+        manager.stopBackgroundDiscovery()
+        manager.updaterSession = spy.session
+        manager.monotonicClock = { [unowned self] in self.discoveryNow }
+        return spy
+    }
+
+    func testPanelOpenAsksForASilentCheck() {
+        let spy = armDiscovery()
+
+        manager.popoverDidOpen()
+
+        XCTAssertEqual(spy.backgroundCheckCount, 1)
+        XCTAssertEqual(spy.checkCount, 0)
+        XCTAssertEqual(manager.phase, .idle)
+        XCTAssertEqual(manager.manualCheckStatus, .idle)
+    }
+
+    func testTheMenuBarPanelStillCallsTheDiscoveryHook() throws {
+        let controller = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Core/MenuBar/MenuBarStatusController.swift")
+
+        let source = try String(contentsOf: controller, encoding: .utf8)
+
+        XCTAssertTrue(source.contains("UpdateManager.shared.popoverDidOpen()"))
+    }
+
+    func testTheDiscoveryTimerRunsOnTheRunLoopAndAsksForACheck() async {
+        let spy = armDiscovery()
+        let checked = expectation(description: "the discovery timer asked for a silent check")
+        checked.assertForOverFulfill = false
+        spy.onCheckForUpdatesInBackground = { checked.fulfill() }
+        manager.backgroundCheckInterval = 0.05
+
+        manager.startBackgroundDiscovery()
+
+        XCTAssertTrue(manager.backgroundDiscoveryArmed)
+        await fulfillment(of: [checked], timeout: 5)
+        manager.stopBackgroundDiscovery()
+        XCTAssertEqual(spy.backgroundCheckCount, 1)
+    }
+
+    func testWakeFromSleepAsksForASilentCheck() async {
+        let spy = armDiscovery()
+        let checked = expectation(description: "wake asked for a silent check")
+        spy.onCheckForUpdatesInBackground = { checked.fulfill() }
+        manager.startBackgroundDiscovery()
+
+        NSWorkspace.shared.notificationCenter.post(
+            name: NSWorkspace.didWakeNotification, object: nil)
+
+        await fulfillment(of: [checked], timeout: 5)
+        XCTAssertEqual(spy.backgroundCheckCount, 1)
+    }
+
+    func testAllTriggersShareTheFiveMinuteThrottle() {
+        let spy = armDiscovery()
+
+        manager.popoverDidOpen()
+        discoveryNow = UpdateManager.backgroundCheckThrottle - 1
+        manager.requestBackgroundCheck()
+
+        XCTAssertEqual(spy.backgroundCheckCount, 1)
+
+        discoveryNow = UpdateManager.backgroundCheckThrottle
+        manager.requestBackgroundCheck()
+
+        XCTAssertEqual(spy.backgroundCheckCount, 2)
+    }
+
+    func testSilentCheckIsSkippedWhileASessionIsInProgress() {
+        let spy = armDiscovery(sessionInProgress: true)
+
+        manager.popoverDidOpen()
+
+        XCTAssertEqual(spy.backgroundCheckCount, 0)
+    }
+
+    func testSilentCheckIsSkippedWhileACardIsShowing() {
+        let spy = armDiscovery()
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+
+        manager.popoverDidOpen()
+
+        XCTAssertEqual(spy.backgroundCheckCount, 0)
+        XCTAssertEqual(manager.phase, .available(version: "9.9.9"))
+    }
+
+    func testTurningAutoChecksOffDisarmsDiscoveryAndFiresNoTrigger() {
+        let spy = armDiscovery()
+        manager.startBackgroundDiscovery()
+        XCTAssertTrue(manager.backgroundDiscoveryArmed)
+
+        manager.setAutoCheckEnabled(false)
+        manager.popoverDidOpen()
+
+        XCTAssertFalse(manager.backgroundDiscoveryArmed)
+        XCTAssertEqual(spy.backgroundCheckCount, 0)
+
+        manager.setAutoCheckEnabled(true)
+
+        XCTAssertTrue(manager.backgroundDiscoveryArmed)
+    }
+
+    func testSilentCheckThatFindsNothingChangesNoVisibleState() {
+        armDiscovery()
+        manager.popoverDidOpen()
+
+        manager.handleNotFound()
+
+        XCTAssertEqual(manager.phase, .idle)
+        XCTAssertEqual(manager.manualCheckStatus, .idle)
+        XCTAssertNil(manager.pendingVersion)
+    }
+
+    func testSilentCheckThatFailsChangesNoVisibleState() {
+        armDiscovery()
+        manager.popoverDidOpen()
+
+        manager.handleError("feed unreachable")
+
+        XCTAssertEqual(manager.phase, .idle)
+        XCTAssertEqual(manager.manualCheckStatus, .idle)
+    }
+
+    func testSilentCheckThatFindsAnUpdateShowsTheAvailableCard() {
+        armDiscovery()
+        manager.popoverDidOpen()
+
+        let choice = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+
+        XCTAssertEqual(choice, .dismiss)
+        XCTAssertEqual(manager.phase, .available(version: "9.9.9"))
+    }
+
+    // MARK: - Manual check is never swallowed
+
+    func testManualCheckIsNeverThrottled() {
+        let spy = armDiscovery()
+        manager.popoverDidOpen()
+
+        manager.checkForUpdatesManually()
+        manager.checkForUpdatesManually()
+
+        XCTAssertEqual(spy.checkCount, 2)
+        XCTAssertEqual(manager.manualCheckStatus, .checking)
+    }
+
+    func testManualCheckDuringASilentSessionRunsWhenTheSessionEnds() async {
+        let spy = armDiscovery(sessionInProgress: true)
+        let checked = expectation(description: "the manual check reached the seam")
+        spy.onCheckForUpdates = { checked.fulfill() }
+
+        manager.checkForUpdatesManually()
+
+        XCTAssertEqual(manager.manualCheckStatus, .checking)
+        XCTAssertEqual(spy.checkCount, 0)
+
+        spy.isInProgress = false
+        await fulfillment(of: [checked], timeout: 5)
+
+        XCTAssertEqual(spy.checkCount, 1)
+        XCTAssertEqual(manager.manualCheckStatus, .checking)
+
+        manager.handleNotFound()
+
+        XCTAssertEqual(manager.manualCheckStatus, .upToDate)
+    }
+
+    func testManualCheckGivesUpQuietlyWhenTheSessionNeverEnds() {
+        let spy = armDiscovery(sessionInProgress: true)
+
+        manager.checkForUpdatesManually()
+        XCTAssertEqual(manager.manualCheckStatus, .checking)
+
+        manager.handleManualCheckExhausted()
+
+        XCTAssertEqual(spy.checkCount, 0)
+        XCTAssertEqual(manager.manualCheckStatus, .idle)
+        XCTAssertEqual(manager.phase, .idle)
+    }
+
+    // MARK: - Update click around a silent session
+
+    func testUpdateClickDuringTheSilentSessionTeardownEndsReadyToInstall() async {
+        let spy = armDiscovery(sessionInProgress: true)
+        let checked = expectation(description: "the resume check reached the seam")
+        spy.onCheckForUpdates = { checked.fulfill() }
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+
+        manager.installPendingUpdate()
+
+        XCTAssertEqual(manager.phase, .downloading(fraction: nil))
+        XCTAssertEqual(spy.checkCount, 0)
+
+        spy.isInProgress = false
+        await fulfillment(of: [checked], timeout: 5)
+
+        XCTAssertFalse(manager.resumeCheckPending)
+
+        let choice = manager.handleUpdateFound(
+            version: "9.9.9", stage: .downloaded, releasePage: nil, informationOnly: false)
+        var choices: [SPUUserUpdateChoice] = []
+        manager.handleReadyToInstall { choices.append($0) }
+
+        XCTAssertEqual(choice, .dismiss)
+        XCTAssertTrue(choices.isEmpty)
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
+    }
+
+    func testUpdateClickDuringARunningDownloadIsIgnored() {
+        let spy = armDiscovery(sessionInProgress: true)
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.installPendingUpdate()
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.handleDownloadInitiated()
+        manager.handleDownloadExpectedLength(1_000)
+        manager.handleDownloadReceived(bytes: 400)
+        XCTAssertEqual(manager.phase, .downloading(fraction: 0.4))
+        XCTAssertEqual(manager.resumeRequestCount, 1)
+
+        manager.installPendingUpdate()
+
+        XCTAssertEqual(manager.phase, .downloading(fraction: 0.4))
+        XCTAssertFalse(manager.resumeCheckPending)
+        XCTAssertEqual(manager.resumeRequestCount, 1)
+        XCTAssertEqual(spy.checkCount, 0)
+    }
+
+    func testUpdateClickWhileInstallingIsIgnored() {
+        armDiscovery(sessionInProgress: true)
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.installPendingUpdate()
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.handleExtractionStarted()
+
+        manager.installPendingUpdate()
+
+        XCTAssertEqual(manager.phase, .installing)
+        XCTAssertFalse(manager.resumeCheckPending)
+        XCTAssertEqual(manager.resumeRequestCount, 1)
+    }
+
+    func testRetryAfterAFailedDownloadStillStartsTheResumePath() {
+        armDiscovery(sessionInProgress: true)
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .notDownloaded, releasePage: nil, informationOnly: false)
+        manager.beginRequestedInstall()
+        manager.handleError("download failed")
+        XCTAssertEqual(manager.phase, .failed(version: "9.9.9"))
+
+        manager.installNow()
+
+        XCTAssertEqual(manager.phase, .downloading(fraction: nil))
+        XCTAssertTrue(manager.resumeCheckPending)
+        XCTAssertEqual(manager.resumeRequestCount, 1)
     }
 }

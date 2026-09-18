@@ -4,9 +4,9 @@ import Foundation
 import Sparkle
 import os
 
-/// In-app updates via Sparkle. The scheduled daily check only surfaces a
-/// pending update (update card + About capsule); Update and Retry download or
-/// re-arm it and always stop at "Ready to install". Installing + relaunching
+/// In-app updates via Sparkle. Scheduled and silent background checks only
+/// surface a pending update (update card + About capsule); Update and Retry
+/// download or re-arm it and always stop at "Ready to install". Installing + relaunching
 /// happens only after an explicit Install now click, with progress mirrored in
 /// `phase`. Scheduled-check failures stay silent; only a user-requested
 /// install surfaces errors.
@@ -28,6 +28,7 @@ final class UpdateManager: ObservableObject {
     struct UpdaterSession {
         let isInProgress: @MainActor () -> Bool
         let checkForUpdates: @MainActor () -> Void
+        let checkForUpdatesInBackground: @MainActor () -> Void
     }
 
     enum ManualCheckStatus: Equatable {
@@ -41,6 +42,7 @@ final class UpdateManager: ObservableObject {
     /// `defaults write oliverio23.BuenMouse updateFeedURLOverride <url>`.
     static let feedURLOverrideDefaultsKey = "updateFeedURLOverride"
     static let resumeCheckMaxAttempts = 40
+    static let backgroundCheckThrottle: TimeInterval = 5 * 60
 
     @Published private(set) var phase: Phase = .idle
     /// GitHub release page of the pending update (the appcast item's <link>).
@@ -53,6 +55,11 @@ final class UpdateManager: ObservableObject {
 
     var updaterSession: UpdaterSession?
     var resumeCheckPollNanoseconds: UInt64 = 250_000_000
+    var backgroundCheckInterval: TimeInterval = 30 * 60
+    /// Counts time spent asleep, so a wake never starts inside the throttle.
+    var monotonicClock: @MainActor () -> TimeInterval = {
+        TimeInterval(clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW)) / 1_000_000_000
+    }
     private(set) var resumeCheckPending = false
     private(set) var resumeRequestCount = 0
 
@@ -69,8 +76,13 @@ final class UpdateManager: ObservableObject {
     private var expectedDownloadBytes: UInt64 = 0
     private var receivedDownloadBytes: UInt64 = 0
     private var manualCheckPending = false
+    private var manualCheckWaiting = false
     private var manualCheckResetTask: Task<Void, Never>?
+    private var manualCheckWaitTask: Task<Void, Never>?
     private var resumeCheckTask: Task<Void, Never>?
+    private var backgroundCheckTimer: Timer?
+    private var wakeObserver: NSObjectProtocol?
+    private var lastBackgroundCheck: TimeInterval?
 
     init() {
         // Defaults to enabled until the Settings toggle writes the key.
@@ -110,14 +122,71 @@ final class UpdateManager: ObservableObject {
         self.updater = updater
         updaterSession = UpdaterSession(
             isInProgress: { updater.sessionInProgress },
-            checkForUpdates: { updater.checkForUpdates() }
+            checkForUpdates: { updater.checkForUpdates() },
+            checkForUpdatesInBackground: { updater.checkForUpdatesInBackground() }
         )
+        if autoCheckEnabled { startBackgroundDiscovery() }
     }
 
     func setAutoCheckEnabled(_ enabled: Bool) {
         autoCheckEnabled = enabled
         UserDefaults.standard.set(enabled, forKey: Self.autoCheckDefaultsKey)
         updater?.automaticallyChecksForUpdates = enabled
+        if enabled {
+            startBackgroundDiscovery()
+        } else {
+            stopBackgroundDiscovery()
+        }
+    }
+
+    // MARK: - Silent discovery
+
+    var backgroundDiscoveryArmed: Bool { backgroundCheckTimer != nil }
+
+    func startBackgroundDiscovery() {
+        guard backgroundCheckTimer == nil else { return }
+        let timer = Timer(timeInterval: backgroundCheckInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.requestBackgroundCheck()
+            }
+        }
+        timer.tolerance = backgroundCheckInterval / 10
+        RunLoop.main.add(timer, forMode: .common)
+        backgroundCheckTimer = timer
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.requestBackgroundCheck()
+            }
+        }
+    }
+
+    func stopBackgroundDiscovery() {
+        backgroundCheckTimer?.invalidate()
+        backgroundCheckTimer = nil
+        if let wakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
+            self.wakeObserver = nil
+        }
+    }
+
+    func requestBackgroundCheck() {
+        guard autoCheckEnabled, phase == .idle, let updaterSession,
+            updaterSession.isInProgress() == false
+        else { return }
+        let now = monotonicClock()
+        if let lastBackgroundCheck, now - lastBackgroundCheck < Self.backgroundCheckThrottle {
+            return
+        }
+        lastBackgroundCheck = now
+        updaterSession.checkForUpdatesInBackground()
+    }
+
+    func popoverDidOpen() {
+        requestBackgroundCheck()
     }
 
     // MARK: - User actions
@@ -131,7 +200,12 @@ final class UpdateManager: ObservableObject {
             return
         }
         guard updaterSession.isInProgress() == false else {
-            beginRequestedResume(autoInstall: false)
+            switch phase {
+            case .downloading, .installing:
+                return
+            case .idle, .available, .readyToInstall, .failed:
+                beginRequestedResume(autoInstall: false)
+            }
             return
         }
         beginRequestedInstall()
@@ -211,11 +285,45 @@ final class UpdateManager: ObservableObject {
 
     /// About window: explicit re-check with visible "up to date" feedback.
     func checkForUpdatesManually() {
-        guard let updater, updater.sessionInProgress == false else { return }
+        guard let updaterSession else { return }
         manualCheckResetTask?.cancel()
         manualCheckPending = true
         manualCheckStatus = .checking
-        updater.checkForUpdates()
+        guard updaterSession.isInProgress() else {
+            manualCheckWaiting = false
+            manualCheckWaitTask?.cancel()
+            updaterSession.checkForUpdates()
+            return
+        }
+        guard !manualCheckWaiting else { return }
+        manualCheckWaiting = true
+        requestManualCheck(attempt: 0)
+    }
+
+    /// Sparkle refuses a user check while a silent session is still running;
+    /// wait for it instead of dropping the click.
+    private func requestManualCheck(attempt: Int) {
+        guard manualCheckWaiting, let updaterSession else { return }
+        guard updaterSession.isInProgress() else {
+            manualCheckWaiting = false
+            updaterSession.checkForUpdates()
+            return
+        }
+        guard attempt < Self.resumeCheckMaxAttempts else {
+            handleManualCheckExhausted()
+            return
+        }
+        manualCheckWaitTask = Task { [weak self, interval = resumeCheckPollNanoseconds] in
+            try? await Task.sleep(nanoseconds: interval)
+            guard !Task.isCancelled else { return }
+            self?.requestManualCheck(attempt: attempt + 1)
+        }
+    }
+
+    func handleManualCheckExhausted() {
+        guard manualCheckWaiting else { return }
+        manualCheckWaiting = false
+        finishManualCheck(status: .idle)
     }
 
     func openReleasePage() {
