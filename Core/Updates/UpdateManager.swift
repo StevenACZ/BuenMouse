@@ -199,7 +199,8 @@ final class UpdateManager: ObservableObject {
             openReleasePage()
             return
         }
-        guard updaterSession.isInProgress() == false else {
+        let resumeAlreadyPending = resumeCheckPending
+        if !resumeAlreadyPending, updaterSession.isInProgress() {
             switch phase {
             case .downloading, .installing:
                 return
@@ -209,10 +210,12 @@ final class UpdateManager: ObservableObject {
             return
         }
         beginRequestedInstall()
+        guard !resumeAlreadyPending else { return }
         updaterSession.checkForUpdates()
     }
 
     func beginRequestedInstall() {
+        installNowRequested = false
         installRequested = true
         phase = .downloading(fraction: nil)
     }
@@ -302,7 +305,7 @@ final class UpdateManager: ObservableObject {
 
     /// Sparkle refuses a user check while a silent session is still running;
     /// wait for it instead of dropping the click.
-    private func requestManualCheck(attempt: Int) {
+    func requestManualCheck(attempt: Int) {
         guard manualCheckWaiting, let updaterSession else { return }
         guard updaterSession.isInProgress() else {
             manualCheckWaiting = false

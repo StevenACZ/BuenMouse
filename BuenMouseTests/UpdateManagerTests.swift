@@ -668,8 +668,32 @@ final class UpdateManagerTests: XCTestCase {
             .appendingPathComponent("Core/MenuBar/MenuBarStatusController.swift")
 
         let source = try String(contentsOf: controller, encoding: .utf8)
+        let buttonLit = try XCTUnwrap(source.range(of: "button.state = .on"))
+        let popoverShown = try XCTUnwrap(
+            source.range(
+                of: "popover.show(relativeTo:", range: buttonLit.upperBound..<source.endIndex))
 
-        XCTAssertTrue(source.contains("UpdateManager.shared.popoverDidOpen()"))
+        XCTAssertNotNil(
+            source.range(
+                of: "UpdateManager.shared.popoverDidOpen()",
+                range: buttonLit.upperBound..<popoverShown.lowerBound))
+    }
+
+    func testTheAboutWindowAlsoCallsTheDiscoveryHook() throws {
+        let controller = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Core/MenuBar/MenuBarStatusController.swift")
+
+        let source = try String(contentsOf: controller, encoding: .utf8)
+        let openAbout = try XCTUnwrap(source.range(of: "func openAboutWindow() {"))
+        let aboutPresented = try XCTUnwrap(
+            source.range(of: "rootView: AboutView()", range: openAbout.upperBound..<source.endIndex))
+
+        XCTAssertNotNil(
+            source.range(
+                of: "UpdateManager.shared.popoverDidOpen()",
+                range: openAbout.upperBound..<aboutPresented.lowerBound))
     }
 
     func testTheDiscoveryTimerRunsOnTheRunLoopAndAsksForACheck() async {
@@ -822,7 +846,7 @@ final class UpdateManagerTests: XCTestCase {
         manager.checkForUpdatesManually()
         XCTAssertEqual(manager.manualCheckStatus, .checking)
 
-        manager.handleManualCheckExhausted()
+        manager.requestManualCheck(attempt: UpdateManager.resumeCheckMaxAttempts)
 
         XCTAssertEqual(spy.checkCount, 0)
         XCTAssertEqual(manager.manualCheckStatus, .idle)
@@ -855,6 +879,31 @@ final class UpdateManagerTests: XCTestCase {
 
         XCTAssertEqual(choice, .dismiss)
         XCTAssertTrue(choices.isEmpty)
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
+    }
+
+    func testUpdateClickDuringAnArmedInstallResumeStopsAtTheReadyCard() {
+        let spy = armDiscovery(sessionInProgress: true)
+        _ = manager.handleUpdateFound(
+            version: "9.9.9", stage: .installing, releasePage: nil, informationOnly: false)
+        manager.installNow()
+        XCTAssertTrue(manager.resumeCheckPending)
+
+        spy.isInProgress = false
+        manager.installPendingUpdate()
+
+        XCTAssertEqual(manager.phase, .downloading(fraction: nil))
+        XCTAssertEqual(manager.resumeRequestCount, 1)
+        XCTAssertEqual(spy.checkCount, 0)
+
+        let choice = manager.handleUpdateFound(
+            version: "9.9.9", stage: .downloaded, releasePage: nil, informationOnly: false)
+
+        XCTAssertEqual(choice, .dismiss)
+        XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
+
+        manager.handleResumeCheckExhausted()
+
         XCTAssertEqual(manager.phase, .readyToInstall(version: "9.9.9"))
     }
 

@@ -172,6 +172,7 @@ final class MenuBarStatusController: NSObject, NSPopoverDelegate, NSWindowDelega
 
     func openAboutWindow() {
         closePopover()
+        UpdateManager.shared.popoverDidOpen()
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.aboutWindow = self.present(
