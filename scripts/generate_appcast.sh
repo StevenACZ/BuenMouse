@@ -36,6 +36,10 @@ ZIP_NAME="BuenMouse-v$VERSION.zip"
 ZIP_PATH="$OUTPUT_DIR/$ZIP_NAME"
 APPCAST_PATH="$OUTPUT_DIR/appcast.xml"
 
+echo "==> Stapling $APP_PATH"
+xcrun stapler staple "$APP_PATH"
+xcrun stapler validate "$APP_PATH"
+
 echo "==> Zipping $APP_PATH -> $ZIP_PATH"
 rm -f "$ZIP_PATH"
 ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
