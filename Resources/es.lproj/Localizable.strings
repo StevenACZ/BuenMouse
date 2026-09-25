@@ -70,27 +70,11 @@
 "about.license" = "Licencia MIT";
 
 /* Permissions onboarding */
-"permissions.window.title" = "BuenMouse — Configuración";
-"permissions.welcome.title" = "Bienvenido a BuenMouse";
-"permissions.welcome.subtitle" = "Un permiso rápido y estás listo.";
+"permissions.reason.accessibility" = "Convierte clics, arrastres y scroll del mouse en gestos de Mission Control, Spaces y zoom.";
+"permissions.reason.automation" = "Cambia de Space al arrastrar de lado con el botón central.";
 "permissions.status.active" = "Activo";
 "permissions.status.pending" = "Pendiente";
-"permissions.card.title" = "Accesibilidad";
-"permissions.card.description" = "BuenMouse necesita acceso de Accesibilidad para detectar clics y gestos del mouse.";
-"permissions.card.activate" = "Activar";
-"permissions.success.title" = "¡Todo listo!";
-"permissions.success.description" = "El acceso de Accesibilidad está activo. Ya puedes usar BuenMouse.";
-"permissions.footer.ready" = "Listo para usar";
 "permissions.footer.instructions" = "Haz clic en Activar y suelta BuenMouse en la lista.";
-"permissions.footer.continue" = "Continuar";
-"permissions.footer.later" = "Más tarde";
-
-/* Permission drag overlay */
-"overlay.title" = "Activa Accesibilidad";
-"overlay.close" = "Cerrar";
-"overlay.message" = "Arrastra la tarjeta a la lista y activa su interruptor si se solicita.";
-"overlay.footnote" = "O haz clic en \"+\" en Configuración del Sistema y elige BuenMouse manualmente.";
-"overlay.drag_source.subtitle" = "Arrastra a la lista de Accesibilidad";
 
 /* Status item */
 "statusitem.active" = "BuenMouse — Activo";
@@ -126,15 +110,5 @@
 "about.update.up_to_date" = "Estás al día";
 "settings.updates.title" = "Buscar actualizaciones automáticamente";
 "settings.updates.subtitle" = "Consulta GitHub Releases una vez al día. No se envía nada.";
-
-"permissions.paused.description" = "Accesibilidad está activada. El seguimiento está en pausa; reanúdalo desde la barra de menú cuando quieras.";
-
-"permissions.unavailable.description" = "Accesibilidad está activada, pero no se pudo iniciar el seguimiento del mouse. Reintenta o cierra y vuelve a abrir BuenMouse si sigue fallando.";
-
-"permissions.retry" = "Reintentar seguimiento";
-
-"permissions.automation.note" = "Algunos gestos del escritorio pueden pedir controlar System Events al usarlos por primera vez.";
-
-"permissions.paused.status" = "Seguimiento en pausa";
 
 "settings.window.title" = "Ajustes de BuenMouse";

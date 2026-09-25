@@ -31,8 +31,9 @@ real window is created and owned by AppKit controllers. Never reintroduce a
   Ctrl-scroll zoom. The tap mask excludes `mouseMoved` and the callback
   re-enables the tap on `tapDisabledByTimeout` — keep both properties; the
   app runs 24/7.
-- `Core/Permissions`: Accessibility onboarding window (content-hugging) and
-  the drag-to-grant System Settings overlay.
+- `Core/Permissions`: Accessibility trust check.
+- `Core/PermissionFlow`: vendored shared first-run permission flow; never edit
+  it here (re-vendor from the canonical package); excluded from format lint.
 - `Core/Settings`: persisted settings and protocol surface for views.
 - `Core/SystemActions`: local macOS actions such as Mission Control / Spaces.
 - `Core/Helpers`: `LocalizationManager` (en/es app language, persisted to
@@ -42,8 +43,7 @@ real window is created and owned by AppKit controllers. Never reintroduce a
 - `Core/UI/Theme.swift`: brand accent (cyan) and shared animation constants.
 - `Views/MenuBar`: dropdown panel (header + gesture grid + action rows).
 - `Views/Settings`: consolidated settings window (showcase + general options).
-- `Views/About`, `Views/Permissions`, `Views/Components`: About panel,
-  onboarding content, shared gesture metadata.
+- `Views/About`, `Views/Components`: About panel, shared gesture metadata.
 
 UI conventions: SwiftUI content hosted in AppKit windows via
 `NSHostingController`; window content is rebuilt on each show and dropped on

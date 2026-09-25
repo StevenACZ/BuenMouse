@@ -49,7 +49,7 @@ else
       git diff --name-only --diff-filter=ACMR -- '*.swift'
       git diff --cached --name-only --diff-filter=ACMR -- '*.swift'
       git ls-files --others --exclude-standard -- '*.swift'
-    } | sort -u
+    } | grep -v '^Core/PermissionFlow/' | sort -u
   )
 fi
 
