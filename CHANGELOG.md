@@ -6,6 +6,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.4.1] - 2026-09-25
+
+### Fixed
+
+- The setup window's spacing is balanced: less empty space above the icon and more room under "Set up later".
+
 ## [3.4.0] - 2026-09-25
 
 ### Changed
