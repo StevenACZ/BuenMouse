@@ -6,6 +6,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-09-25
+
 ### Changed
 
 - First launch asks for Accessibility and Automation (to switch Spaces with sideways middle-button drags) in one setup window. A guide inside System Settings follows its window and lets you drag BuenMouse's icon into the list, and a short welcome closes by itself once everything is on. Macs where BuenMouse is already set up skip it.
