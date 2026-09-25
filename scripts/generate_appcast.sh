@@ -36,13 +36,29 @@ ZIP_NAME="BuenMouse-v$VERSION.zip"
 ZIP_PATH="$OUTPUT_DIR/$ZIP_NAME"
 APPCAST_PATH="$OUTPUT_DIR/appcast.xml"
 
+VALIDATION_DIR="$(mktemp -d "${TMPDIR:-/tmp}/buenmouse-appcast.XXXXXX")"
+cleanup() {
+  rm -rf "$VALIDATION_DIR"
+}
+trap cleanup EXIT
+
 echo "==> Stapling $APP_PATH"
 xcrun stapler staple "$APP_PATH"
 xcrun stapler validate "$APP_PATH"
 
 echo "==> Zipping $APP_PATH -> $ZIP_PATH"
 rm -f "$ZIP_PATH"
-ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
+COPYFILE_DISABLE=1 ditto -c -k --norsrc --keepParent "$APP_PATH" "$ZIP_PATH"
+if unzip -Z1 "$ZIP_PATH" | grep -Eq '(^|/)\._'; then
+  echo "AppleDouble entries found in $ZIP_PATH" >&2
+  exit 65
+fi
+
+echo "==> Verifying archived app"
+ditto -x -k "$ZIP_PATH" "$VALIDATION_DIR"
+ARCHIVED_APP="$VALIDATION_DIR/$(basename "$APP_PATH")"
+xcrun stapler validate "$ARCHIVED_APP"
+codesign --verify --deep --strict --verbose=2 "$ARCHIVED_APP"
 
 echo "==> Signing update (EdDSA key from the login Keychain)"
 SIGNATURE_ATTRS="$("$SPARKLE_BIN/sign_update" "$ZIP_PATH")"
