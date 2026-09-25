@@ -70,27 +70,11 @@
 "about.license" = "MIT License";
 
 /* Permissions onboarding */
-"permissions.window.title" = "BuenMouse — Setup";
-"permissions.welcome.title" = "Welcome to BuenMouse";
-"permissions.welcome.subtitle" = "One quick permission and you're ready to go.";
+"permissions.reason.accessibility" = "Turn middle clicks, drags and scrolls into Mission Control, Spaces and zoom gestures.";
+"permissions.reason.automation" = "Switch Spaces when you drag sideways with the middle button.";
 "permissions.status.active" = "Active";
 "permissions.status.pending" = "Pending";
-"permissions.card.title" = "Accessibility";
-"permissions.card.description" = "BuenMouse needs Accessibility access to detect mouse clicks and gestures.";
-"permissions.card.activate" = "Activate";
-"permissions.success.title" = "You're all set!";
-"permissions.success.description" = "Accessibility access is active. You can start using BuenMouse.";
-"permissions.footer.ready" = "Ready to go";
 "permissions.footer.instructions" = "Click Activate, then drop BuenMouse on the list.";
-"permissions.footer.continue" = "Continue";
-"permissions.footer.later" = "Later";
-
-/* Permission drag overlay */
-"overlay.title" = "Allow Accessibility";
-"overlay.close" = "Close";
-"overlay.message" = "Drag the card into the list, then enable its switch if asked.";
-"overlay.footnote" = "Or click \"+\" in System Settings and pick BuenMouse manually.";
-"overlay.drag_source.subtitle" = "Drag onto the Accessibility list";
 
 /* Status item */
 "statusitem.active" = "BuenMouse — Active";
@@ -126,15 +110,5 @@
 "about.update.up_to_date" = "You're up to date";
 "settings.updates.title" = "Check for updates automatically";
 "settings.updates.subtitle" = "Checks GitHub Releases once a day. Nothing is sent.";
-
-"permissions.paused.description" = "Accessibility is enabled. Monitoring is paused; resume it from the menu bar whenever you are ready.";
-
-"permissions.unavailable.description" = "Accessibility is enabled, but mouse monitoring could not start. Retry, or quit and reopen BuenMouse if it still fails.";
-
-"permissions.retry" = "Retry monitoring";
-
-"permissions.automation.note" = "Some desktop gestures may ask to control System Events when you first use them.";
-
-"permissions.paused.status" = "Monitoring paused";
 
 "settings.window.title" = "BuenMouse Settings";

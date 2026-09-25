@@ -10,7 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var gestureHandler: GestureHandler?
     private var eventMonitor: EventMonitor?
     private var menuBarController: MenuBarStatusController?
-    private var permissionWindowController: PermissionWindowController?
+    private var permissionFlow: PermissionFlow?
     private var wakeObserver: NSObjectProtocol?
     private var accessibilityObserver: NSObjectProtocol?
 
@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         setupComponents()
         setupMenuBar()
+        permissionFlow = makePermissionFlow()
         configureLaunchAtLoginDefault()
         UpdateManager.shared.start()
 
@@ -34,11 +35,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.applyMonitoringState()
         }
 
-        if AccessibilityPermission.isGranted {
-            applyMonitoringState()
-        } else {
-            showPermissionOnboarding()
-        }
+        applyMonitoringState()
+        permissionFlow?.presentIfNeeded()
 
         // After sleep the session tap can come back disabled; re-assert it.
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
@@ -95,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupMenuBar() {
         let controller = MenuBarStatusController(settings: settingsManager)
         controller.onOpenPermissions = { [weak self] in
-            self?.showPermissionOnboarding()
+            self?.permissionFlow?.present()
         }
         controller.isMonitoringReady = { [weak self] in self?.eventMonitor?.isReady == true }
         menuBarController = controller
@@ -136,23 +134,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Permission Onboarding
 
-    private func showPermissionOnboarding() {
-        applyMonitoringState()
-
-        if permissionWindowController == nil {
-            let controller = PermissionWindowController()
-            controller.readiness = { [weak self] in
-                self?.permissionReadiness() ?? .unavailable
-            }
-            permissionWindowController = controller
-        }
-        permissionWindowController?.show()
+    private func makePermissionFlow() -> PermissionFlow {
+        let flow = PermissionFlow(
+            configuration: PermissionFlowConfiguration(
+                appName: "BuenMouse",
+                icon: NSApp.applicationIconImage,
+                accent: Theme.accent,
+                items: [
+                    PermissionFlowItem(
+                        .accessibility,
+                        reason: permissionText("permissions.reason.accessibility")
+                    ),
+                    PermissionFlowItem(
+                        .automation,
+                        reason: permissionText("permissions.reason.automation")
+                    ),
+                ],
+                language: { LocalizationManager.shared.language == "es" ? .spanish : .english },
+                legacyCompletionKeys: ["didConfigureLaunchAtLogin"],
+                automationTarget: "com.apple.systemevents",
+                isReady: { [weak self] in self?.monitoringReady() ?? false },
+                pendingRelaunch: { [weak self] in
+                    guard let self else { return false }
+                    return AccessibilityPermission.isGranted && !self.monitoringReady()
+                },
+                menuBarAnchor: { [weak self] in self?.menuBarController?.statusButtonFrame }
+            )
+        )
+        flow.model.onGranted = { [weak self] _ in self?.applyMonitoringState() }
+        return flow
     }
 
-    private func permissionReadiness() -> PermissionReadiness {
+    private func permissionText(_ key: String) -> PermissionFlowText {
+        func text(_ language: String) -> String {
+            let bundle = Bundle.main.path(forResource: language, ofType: "lproj").flatMap(Bundle.init(path:)) ?? .main
+            return bundle.localizedString(forKey: key, value: nil, table: "Localizable")
+        }
+        return PermissionFlowText(text("en"), text("es"))
+    }
+
+    private func monitoringReady() -> Bool {
         applyMonitoringState()
-        guard AccessibilityPermission.isGranted else { return .needsPermission }
-        guard settingsManager.isMonitoringActive else { return .paused }
-        return eventMonitor?.isReady == true ? .ready : .unavailable
+        return !settingsManager.isMonitoringActive || eventMonitor?.isReady == true
     }
 }

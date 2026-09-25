@@ -10,7 +10,7 @@ import os.log
 final class MenuBarStatusController: NSObject, NSPopoverDelegate, NSWindowDelegate {
     private let settings: SettingsManager
 
-    /// Set by the AppDelegate — opens the Accessibility onboarding window.
+    /// Set by the AppDelegate — opens the permission setup flow.
     var onOpenPermissions: (() -> Void)?
     var isMonitoringReady: () -> Bool = { false }
 
@@ -41,6 +41,11 @@ final class MenuBarStatusController: NSObject, NSPopoverDelegate, NSWindowDelega
         button.target = self
         button.action = #selector(togglePopover)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+    }
+
+    var statusButtonFrame: CGRect? {
+        guard let button = statusItem?.button, let window = button.window else { return nil }
+        return window.convertToScreen(button.convert(button.bounds, to: nil))
     }
 
     func refreshStatusIcon() {
