@@ -70,9 +70,11 @@ public final class PermissionFlowModel: NSObject, ObservableObject {
       || configuration.legacyCompletionKeys.contains { configuration.defaults.bool(forKey: $0) }
   }
 
+  public var isResuming: Bool { configuration.defaults.bool(forKey: Self.resumeKey) }
+
   public var shouldPresentAtLaunch: Bool {
     refresh()
-    return !isCompleted || !ready || configuration.defaults.bool(forKey: Self.resumeKey)
+    return !isCompleted || !ready || isResuming
   }
 
   public func markCompleted() {
@@ -186,7 +188,7 @@ public final class PermissionFlowModel: NSObject, ObservableObject {
 
   private func afterSystemPrompt() {
     refresh()
-    NSApp.activate()
+    PermissionFlowActivation.bringForward()
   }
 
   private func handleGranted(_ kind: PermissionFlowKind) {
@@ -201,6 +203,18 @@ public final class PermissionFlowModel: NSObject, ObservableObject {
 
   @objc private func finishGuide() {
     dismissGuide()
+    PermissionFlowActivation.bringForward()
+  }
+}
+
+@MainActor
+enum PermissionFlowActivation {
+  static func bringForward(_ window: NSWindow? = nil) {
     NSApp.activate()
+    let windows =
+      window.map { [$0] }
+      ?? NSApp.orderedWindows.filter { $0.isVisible && $0.level == .normal }
+    for candidate in windows.reversed() { candidate.orderFrontRegardless() }
+    windows.first?.makeKey()
   }
 }
